@@ -12,6 +12,8 @@ const CLOUD_KEYS = {
   waNumber: "waNumber",
 };
 
+const CLOUD_TIMEOUT_MS = 15000;
+
 const IMAGE_UPLOAD_CONFIG = {
   product: {
     maxWidth: 1400,
@@ -272,8 +274,8 @@ function bindEvents() {
 
     setProductSubmitLoading(true);
 
-    let images;
     try {
+      let images;
       images = await Promise.all(
         files.map((file) =>
           processImageFile(file, {
@@ -283,36 +285,33 @@ function bindEvents() {
           })
         )
       );
+      const product = {
+        id: createId(),
+        name,
+        section,
+        category: normalizeSubsection(section, category),
+        description,
+        price: Math.round(priceValue),
+        images,
+      };
+
+      state.products.unshift(product);
+      if (!persistProducts()) {
+        return;
+      }
+
+      await syncStateToCloud(CLOUD_KEYS.products, state.products);
+
+      el.productForm.reset();
+      populateAdminSubsections(normalizeSection(el.productSection.value));
+      el.productImagePreview.innerHTML = "";
+      renderAll();
+      switchView("shop");
     } catch {
+      alert("No se pudieron procesar o sincronizar las imagenes. Intenta con fotos mas livianas.");
+    } finally {
       setProductSubmitLoading(false);
-      alert("No se pudieron procesar las imagenes. Intenta con fotos mas livianas.");
-      return;
     }
-
-    const product = {
-      id: createId(),
-      name,
-      section,
-      category: normalizeSubsection(section, category),
-      description,
-      price: Math.round(priceValue),
-      images,
-    };
-
-    state.products.unshift(product);
-    if (!persistProducts()) {
-      setProductSubmitLoading(false);
-      return;
-    }
-
-    await syncStateToCloud(CLOUD_KEYS.products, state.products);
-
-    el.productForm.reset();
-    populateAdminSubsections(normalizeSection(el.productSection.value));
-    el.productImagePreview.innerHTML = "";
-    setProductSubmitLoading(false);
-    renderAll();
-    switchView("shop");
   });
 
   el.saveHeroImagesBtn.addEventListener("click", async () => {
@@ -324,8 +323,8 @@ function bindEvents() {
 
     setHeroSubmitLoading(true);
 
-    let images;
     try {
+      let images;
       images = await Promise.all(
         files.map((file) =>
           processImageFile(file, {
@@ -335,35 +334,31 @@ function bindEvents() {
           })
         )
       );
+      const normalized = normalizeHeroSlides(images);
+
+      if (!normalized.length) {
+        alert("No se pudieron procesar las imagenes.");
+        return;
+      }
+
+      state.heroSlides = normalized;
+      state.heroSlideIndex = 0;
+      if (!persistHeroSlides()) {
+        return;
+      }
+
+      await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
+
+      renderHeroCarousel();
+      startHeroAutoplay();
+      el.heroImagesInput.value = "";
+      el.heroImagePreview.innerHTML = "";
+      alert("Carrusel actualizado.");
     } catch {
+      alert("No se pudieron procesar o sincronizar las imagenes del carrusel.");
+    } finally {
       setHeroSubmitLoading(false);
-      alert("No se pudieron procesar las imagenes del carrusel.");
-      return;
     }
-
-    const normalized = normalizeHeroSlides(images);
-
-    if (!normalized.length) {
-      setHeroSubmitLoading(false);
-      alert("No se pudieron procesar las imagenes.");
-      return;
-    }
-
-    state.heroSlides = normalized;
-    state.heroSlideIndex = 0;
-    if (!persistHeroSlides()) {
-      setHeroSubmitLoading(false);
-      return;
-    }
-
-    await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
-
-    renderHeroCarousel();
-    startHeroAutoplay();
-    el.heroImagesInput.value = "";
-    el.heroImagePreview.innerHTML = "";
-    setHeroSubmitLoading(false);
-    alert("Carrusel actualizado.");
   });
 
   el.syncUploadBtn.addEventListener("click", async () => {
@@ -543,7 +538,11 @@ async function fetchCloudState(key) {
   }
 
   try {
-    const response = await fetch(`${CLOUD_ENDPOINT}?key=${encodeURIComponent(key)}`);
+    const response = await fetchWithTimeout(
+      `${CLOUD_ENDPOINT}?key=${encodeURIComponent(key)}`,
+      {},
+      CLOUD_TIMEOUT_MS
+    );
     if (!response.ok) {
       return { ok: false, data: null };
     }
@@ -565,13 +564,13 @@ async function syncStateToCloud(key, data) {
   }
 
   try {
-    const response = await fetch(CLOUD_ENDPOINT, {
+    const response = await fetchWithTimeout(CLOUD_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ key, data }),
-    });
+    }, CLOUD_TIMEOUT_MS);
 
     const ok = response.ok;
     if (!ok) {
@@ -581,6 +580,20 @@ async function syncStateToCloud(key, data) {
   } catch {
     showCloudSyncWarning();
     return false;
+  }
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
