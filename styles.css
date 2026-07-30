@@ -548,6 +548,12 @@ small {
   gap: 8px;
 }
 
+.upload-count {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #666;
+}
+
 .image-preview-thumb {
   width: 100%;
   aspect-ratio: 1 / 1;

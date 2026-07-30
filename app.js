@@ -95,6 +95,7 @@ const state = {
   heroSlides: loadFromStorage(STORAGE_KEYS.heroSlides, []),
   heroSlideIndex: 0,
   heroTimerId: null,
+  pendingProductFiles: [],
   waNumber: localStorage.getItem(STORAGE_KEYS.waNumber) || "",
   cloudWarningShown: false,
 };
@@ -129,6 +130,8 @@ const el = {
   productCategory: document.getElementById("product-category"),
   productImagesInput: document.getElementById("product-images"),
   productImagePreview: document.getElementById("product-image-preview"),
+  productImageCount: document.getElementById("product-image-count"),
+  clearProductImagesBtn: document.getElementById("clear-product-images"),
   publishProductBtn: document.getElementById("publish-product-btn"),
   heroImagesInput: document.getElementById("hero-images"),
   heroImagePreview: document.getElementById("hero-image-preview"),
@@ -158,6 +161,7 @@ async function init() {
 
   el.waNumber.value = state.waNumber;
   populateAdminSubsections(normalizeSection(el.productSection.value));
+  renderProductImageCount();
   setCartOpen(false);
 
   bindEvents();
@@ -231,7 +235,24 @@ function bindEvents() {
   });
 
   el.productImagesInput.addEventListener("change", () => {
-    renderLocalImagePreview(el.productImagesInput.files, el.productImagePreview);
+    const selected = Array.from(el.productImagesInput.files || []);
+    if (!selected.length) {
+      return;
+    }
+
+    state.pendingProductFiles = mergeUniqueFiles(state.pendingProductFiles, selected);
+    renderLocalImagePreview(state.pendingProductFiles, el.productImagePreview);
+    renderProductImageCount();
+
+    // Permite volver a abrir el selector y sumar mas imagenes.
+    el.productImagesInput.value = "";
+  });
+
+  el.clearProductImagesBtn.addEventListener("click", () => {
+    state.pendingProductFiles = [];
+    el.productImagesInput.value = "";
+    el.productImagePreview.innerHTML = "";
+    renderProductImageCount();
   });
 
   el.heroImagesInput.addEventListener("change", () => {
@@ -261,7 +282,7 @@ function bindEvents() {
     const description = String(formData.get("product-description") || "").trim();
     const priceValue = Number(formData.get("product-price"));
 
-    const files = Array.from(el.productImagesInput.files || []);
+    const files = [...state.pendingProductFiles];
 
     if (!name || !section || !category || !description || !Number.isFinite(priceValue) || priceValue <= 0) {
       alert("Completa nombre, seccion, categoria, descripcion y precio correctamente.");
@@ -305,6 +326,8 @@ function bindEvents() {
 
       el.productForm.reset();
       populateAdminSubsections(normalizeSection(el.productSection.value));
+      state.pendingProductFiles = [];
+      renderProductImageCount();
       el.productImagePreview.innerHTML = "";
       renderAll();
       switchView("shop");
@@ -1133,6 +1156,11 @@ function setProductSubmitLoading(isLoading) {
   el.publishProductBtn.textContent = isLoading ? "Publicando..." : "Publicar producto";
 }
 
+function renderProductImageCount() {
+  const total = state.pendingProductFiles.length;
+  el.productImageCount.textContent = `${total} foto(s) seleccionada(s)`;
+}
+
 function setHeroSubmitLoading(isLoading) {
   el.saveHeroImagesBtn.disabled = isLoading;
   el.saveHeroImagesBtn.textContent = isLoading ? "Guardando..." : "Guardar carrusel";
@@ -1163,6 +1191,23 @@ function renderLocalImagePreview(fileList, container) {
     more.textContent = `+${files.length - 8} mas`;
     container.appendChild(more);
   }
+}
+
+function mergeUniqueFiles(current, incoming) {
+  const list = [...current];
+  const seen = new Set(list.map((file) => `${file.name}_${file.size}_${file.lastModified}`));
+
+  incoming.forEach((file) => {
+    const signature = `${file.name}_${file.size}_${file.lastModified}`;
+    if (seen.has(signature)) {
+      return;
+    }
+
+    seen.add(signature);
+    list.push(file);
+  });
+
+  return list;
 }
 
 async function processImageFile(file, config) {
