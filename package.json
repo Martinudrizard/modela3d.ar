@@ -1,0 +1,9 @@
+{
+  "name": "modela3d-ar",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tienda Modela3D con admin y Netlify Functions",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

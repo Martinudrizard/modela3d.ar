@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modela3D.ar | Tienda 3D</title>
+    <meta
+      name="description"
+      content="Tienda de productos impresos en 3D de Modela3D.ar."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <header class="site-header">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">M3D</div>
+        <div>
+          <h1>Modela3D.ar</h1>
+          <p>Impresion 3D personalizada</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <nav class="view-switch" aria-label="Cambiar vista">
+          <button class="view-btn active" data-view="shop">Tienda</button>
+          <button class="view-btn" data-view="admin">Admin</button>
+        </nav>
+
+        <button id="cart-toggle" class="cart-toggle" aria-label="Abrir carrito" aria-expanded="false">
+          Carrito (<span id="cart-toggle-count">0</span>)
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section id="shop-view" class="view active" aria-labelledby="shop-title">
+        <div class="flash-strip">
+          <p>Envio gratis a todo el pais - 10% de descuento pagando con transferencia</p>
+        </div>
+
+        <div class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Modela3D.ar Store</p>
+            <h2 id="shop-title">DISENO QUE SALE DE LA IMPRESORA, LISTO PARA TU ESPACIO</h2>
+            <div class="hero-actions">
+              <button class="hero-btn">Ver catalogo</button>
+            </div>
+          </div>
+
+          <div class="hero-media" aria-label="Galeria destacada">
+            <img id="hero-carousel-image" class="hero-carousel-image" alt="Producto destacado" />
+            <button id="hero-prev" class="hero-nav hero-prev" type="button" aria-label="Imagen anterior">
+              ‹
+            </button>
+            <button id="hero-next" class="hero-nav hero-next" type="button" aria-label="Imagen siguiente">
+              ›
+            </button>
+            <div id="hero-dots" class="hero-dots"></div>
+          </div>
+        </div>
+
+        <section class="section-filter" aria-label="Filtrar por seccion">
+          <h3>Secciones</h3>
+          <div id="section-chips" class="chips section-chips"></div>
+        </section>
+
+        <section class="category-filter" aria-label="Filtrar por categoria">
+          <h3>Explora por categoria</h3>
+          <div id="category-chips" class="chips"></div>
+        </section>
+
+        <section id="products-sections" class="products-sections"></section>
+      </section>
+
+      <section id="admin-view" class="view" aria-labelledby="admin-title">
+        <div class="admin-header">
+          <h2 id="admin-title">Panel de carga</h2>
+          <p>
+            Carga productos desde el celular o PC con fotos, descripcion y precio.
+          </p>
+        </div>
+
+        <div class="admin-grid">
+          <section class="card">
+            <h3>Configuracion de WhatsApp</h3>
+            <label for="wa-number">Numero destino (formato internacional)</label>
+            <input
+              id="wa-number"
+              type="text"
+              placeholder="5491122334455"
+              inputmode="numeric"
+            />
+            <button id="save-wa" class="btn-primary">Guardar numero</button>
+            <small>
+              Ejemplo: 54911... (sin +, sin espacios, sin guiones)
+            </small>
+          </section>
+
+          <section class="card">
+            <h3>Nuevo producto</h3>
+            <form id="product-form">
+              <label for="product-name">Nombre</label>
+              <input id="product-name" name="product-name" required maxlength="60" />
+
+              <label for="product-section">Seccion</label>
+              <select id="product-section" name="product-section" required>
+                <option value="Productos">Productos</option>
+                <option value="Insumos">Insumos</option>
+                <option value="Impresoras">Impresoras</option>
+              </select>
+
+              <label for="product-category">Subseccion</label>
+              <select id="product-category" name="product-category" required></select>
+
+              <label for="product-description">Descripcion</label>
+              <textarea
+                id="product-description"
+                name="product-description"
+                rows="3"
+                required
+                maxlength="220"
+              ></textarea>
+
+              <label for="product-price">Precio (ARS)</label>
+              <input
+                id="product-price"
+                name="product-price"
+                type="number"
+                required
+                min="1"
+                step="1"
+                inputmode="numeric"
+              />
+
+              <label for="product-images">Fotos (1 o mas)</label>
+              <input
+                id="product-images"
+                name="product-images"
+                type="file"
+                accept="image/*"
+                multiple
+                required
+              />
+              <small>
+                Desde celular podes elegir fotos de galeria o tomar nuevas.
+              </small>
+              <div id="product-image-preview" class="image-preview-grid"></div>
+
+              <button id="publish-product-btn" class="btn-primary" type="submit">Publicar producto</button>
+            </form>
+          </section>
+
+          <section class="card">
+            <h3>Carrusel principal</h3>
+            <label for="hero-images">Subi varias fotos destacadas</label>
+            <input id="hero-images" type="file" accept="image/*" multiple />
+            <div id="hero-image-preview" class="image-preview-grid"></div>
+            <button id="save-hero-images" class="btn-primary" type="button">
+              Guardar carrusel
+            </button>
+            <small>
+              Recomendado: fotos verticales u horizontales en buena calidad.
+            </small>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="section-title-row">
+            <h3>Productos cargados</h3>
+            <button id="reset-demo" class="btn-ghost" type="button">
+              Restaurar productos demo
+            </button>
+          </div>
+          <div id="admin-product-list" class="admin-product-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <aside class="cart-panel" aria-labelledby="cart-title">
+      <div class="cart-header">
+        <h3 id="cart-title">Carrito</h3>
+        <div class="cart-head-actions">
+          <span id="cart-count-badge" class="cart-badge">0</span>
+          <button id="cart-close" class="cart-close" type="button" aria-label="Cerrar carrito">
+            x
+          </button>
+        </div>
+      </div>
+      <div id="cart-items" class="cart-items"></div>
+      <div class="cart-footer">
+        <p>Total: <strong id="cart-total">$0</strong></p>
+        <button id="checkout-btn" class="btn-primary">Comprar por WhatsApp</button>
+      </div>
+    </aside>
+
+    <template id="product-card-template">
+      <article class="product-card">
+        <div class="image-wrap">
+          <img class="product-image" alt="Imagen del producto" />
+          <div class="image-controls"></div>
+        </div>
+        <div class="product-content">
+          <h4 class="product-title"></h4>
+          <p class="product-desc"></p>
+          <div class="product-bottom">
+            <strong class="product-price"></strong>
+            <button class="btn-add">Agregar</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
