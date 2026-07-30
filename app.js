@@ -463,6 +463,19 @@ function bindEvents() {
       const index = Number(target.dataset.imageIndex);
       state.imageIndexByProduct[productId] = index;
       renderProducts();
+      return;
+    }
+
+    if (target.matches(".product-prev")) {
+      const productId = target.dataset.productId;
+      moveProductImage(productId, -1);
+      return;
+    }
+
+    if (target.matches(".product-next")) {
+      const productId = target.dataset.productId;
+      moveProductImage(productId, 1);
+      return;
     }
   });
 
@@ -810,6 +823,8 @@ function buildProductCard(product) {
   const fragment = el.productCardTemplate.content.cloneNode(true);
   const card = fragment.querySelector(".product-card");
   const image = fragment.querySelector(".product-image");
+  const prevButton = fragment.querySelector(".product-prev");
+  const nextButton = fragment.querySelector(".product-next");
   const controls = fragment.querySelector(".image-controls");
   const title = fragment.querySelector(".product-title");
   const desc = fragment.querySelector(".product-desc");
@@ -827,8 +842,15 @@ function buildProductCard(product) {
 
   addButton.dataset.productId = product.id;
 
+  prevButton.dataset.productId = product.id;
+  nextButton.dataset.productId = product.id;
+
+  const hasMultipleImages = product.images.length > 1;
+  prevButton.classList.toggle("hidden", !hasMultipleImages);
+  nextButton.classList.toggle("hidden", !hasMultipleImages);
+
   controls.innerHTML = "";
-  if (product.images.length > 1) {
+  if (hasMultipleImages) {
     product.images.forEach((_, index) => {
       const dot = document.createElement("button");
       dot.className = "dot";
@@ -842,6 +864,22 @@ function buildProductCard(product) {
   }
 
   return card;
+}
+
+function moveProductImage(productId, delta) {
+  if (!productId) {
+    return;
+  }
+
+  const product = state.products.find((item) => item.id === productId);
+  if (!product || !Array.isArray(product.images) || product.images.length <= 1) {
+    return;
+  }
+
+  const currentIndex = Number(state.imageIndexByProduct[productId] || 0);
+  const nextIndex = (currentIndex + delta + product.images.length) % product.images.length;
+  state.imageIndexByProduct[productId] = nextIndex;
+  renderProducts();
 }
 
 function renderCart() {

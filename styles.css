@@ -421,6 +421,36 @@ main {
   justify-content: center;
 }
 
+.product-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e7b7bb;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #c3131b;
+  font-size: 1.15rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.product-prev {
+  left: 8px;
+}
+
+.product-next {
+  right: 8px;
+}
+
+.product-nav.hidden {
+  display: none;
+}
+
 .dot {
   width: 9px;
   height: 9px;
