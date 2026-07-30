@@ -1,5 +1,3 @@
-const { getStore } = require("@netlify/blobs");
-
 const ALLOWED_KEYS = new Set(["products", "heroSlides", "waNumber"]);
 
 const CORS_HEADERS = {
@@ -8,7 +6,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
 };
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 204,
@@ -18,7 +16,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const store = getStore("modela3d");
+    const store = context?.blobs?.getStore("modela3d");
+    if (!store) {
+      return response(500, {
+        ok: false,
+        error: "Blob store unavailable",
+        details: "Netlify runtime blobs context is not available.",
+      });
+    }
 
     if (event.httpMethod === "GET") {
       const key = event.queryStringParameters?.key;
@@ -26,7 +31,8 @@ exports.handler = async (event) => {
         return response(400, { ok: false, error: "Invalid key" });
       }
 
-      const data = await store.get(key, { type: "json" });
+      const raw = await store.get(key);
+      const data = raw ? safeJsonParse(raw).value : null;
       return response(200, { ok: true, data });
     }
 
@@ -41,7 +47,7 @@ exports.handler = async (event) => {
         return response(400, { ok: false, error: "Invalid key" });
       }
 
-      await store.setJSON(key, data);
+      await store.set(key, JSON.stringify(data));
       return response(200, { ok: true });
     }
 
