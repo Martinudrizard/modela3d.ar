@@ -12,7 +12,8 @@ const CLOUD_KEYS = {
   waNumber: "waNumber",
 };
 
-const CLOUD_TIMEOUT_MS = 15000;
+const CLOUD_TIMEOUT_MS = 45000;
+const HERO_MAX_IMAGES = 6;
 
 const IMAGE_UPLOAD_CONFIG = {
   product: {
@@ -21,9 +22,9 @@ const IMAGE_UPLOAD_CONFIG = {
     quality: 0.82,
   },
   hero: {
-    maxWidth: 1800,
-    maxHeight: 1800,
-    quality: 0.84,
+    maxWidth: 1200,
+    maxHeight: 1200,
+    quality: 0.72,
   },
 };
 
@@ -318,6 +319,11 @@ function bindEvents() {
     const files = Array.from(el.heroImagesInput.files || []);
     if (!files.length) {
       alert("Subi al menos una imagen para el carrusel.");
+      return;
+    }
+
+    if (files.length > HERO_MAX_IMAGES) {
+      alert(`Para que funcione bien en celular, el carrusel permite hasta ${HERO_MAX_IMAGES} imagenes por vez.`);
       return;
     }
 
