@@ -130,6 +130,8 @@ const el = {
   heroImagesInput: document.getElementById("hero-images"),
   heroImagePreview: document.getElementById("hero-image-preview"),
   saveHeroImagesBtn: document.getElementById("save-hero-images"),
+  syncUploadBtn: document.getElementById("sync-upload"),
+  syncDownloadBtn: document.getElementById("sync-download"),
   adminProductList: document.getElementById("admin-product-list"),
   resetDemoBtn: document.getElementById("reset-demo"),
 };
@@ -362,6 +364,26 @@ function bindEvents() {
     el.heroImagePreview.innerHTML = "";
     setHeroSubmitLoading(false);
     alert("Carrusel actualizado.");
+  });
+
+  el.syncUploadBtn.addEventListener("click", async () => {
+    const [productsOk, heroOk, waOk] = await Promise.all([
+      syncStateToCloud(CLOUD_KEYS.products, state.products),
+      syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides),
+      syncStateToCloud(CLOUD_KEYS.waNumber, state.waNumber),
+    ]);
+
+    if (productsOk && heroOk && waOk) {
+      alert("Datos subidos a la nube. Ahora recarga el otro dispositivo.");
+      return;
+    }
+
+    alert("No se pudo completar la sincronizacion. Revisa conexion e intenta de nuevo.");
+  });
+
+  el.syncDownloadBtn.addEventListener("click", async () => {
+    await hydrateFromCloud();
+    alert("Datos actualizados desde la nube.");
   });
 
   el.resetDemoBtn.addEventListener("click", () => {

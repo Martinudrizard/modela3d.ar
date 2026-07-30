@@ -586,6 +586,17 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.sync-help {
+  margin: 0 0 10px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.sync-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .admin-product-list {
   display: grid;
   gap: 10px;
