@@ -93,6 +93,7 @@ const state = {
   heroSlideIndex: 0,
   heroTimerId: null,
   waNumber: localStorage.getItem(STORAGE_KEYS.waNumber) || "",
+  cloudWarningShown: false,
 };
 
 const el = {
@@ -473,32 +474,38 @@ async function hydrateFromCloud() {
     return;
   }
 
-  const [cloudProducts, cloudHeroSlides, cloudWaNumber] = await Promise.all([
+  const [cloudProductsResult, cloudHeroSlidesResult, cloudWaNumberResult] = await Promise.all([
     fetchCloudState(CLOUD_KEYS.products),
     fetchCloudState(CLOUD_KEYS.heroSlides),
     fetchCloudState(CLOUD_KEYS.waNumber),
   ]);
 
-  if (Array.isArray(cloudProducts) && cloudProducts.length) {
-    state.products = cloudProducts.map(normalizeProduct);
-    persistProducts();
-  } else if (!cloudProducts) {
-    await syncStateToCloud(CLOUD_KEYS.products, state.products);
+  if (cloudProductsResult.ok) {
+    if (Array.isArray(cloudProductsResult.data)) {
+      state.products = cloudProductsResult.data.map(normalizeProduct);
+      persistProducts();
+    } else if (cloudProductsResult.data === null && state.products.length) {
+      await syncStateToCloud(CLOUD_KEYS.products, state.products);
+    }
   }
 
-  if (Array.isArray(cloudHeroSlides) && cloudHeroSlides.length) {
-    state.heroSlides = normalizeHeroSlides(cloudHeroSlides);
-    persistHeroSlides();
-  } else if (!cloudHeroSlides) {
-    await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
+  if (cloudHeroSlidesResult.ok) {
+    if (Array.isArray(cloudHeroSlidesResult.data)) {
+      state.heroSlides = normalizeHeroSlides(cloudHeroSlidesResult.data);
+      persistHeroSlides();
+    } else if (cloudHeroSlidesResult.data === null && state.heroSlides.length) {
+      await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
+    }
   }
 
-  if (typeof cloudWaNumber === "string" && cloudWaNumber.trim()) {
-    state.waNumber = sanitizeWaNumber(cloudWaNumber);
-    localStorage.setItem(STORAGE_KEYS.waNumber, state.waNumber);
-    el.waNumber.value = state.waNumber;
-  } else if (!cloudWaNumber && state.waNumber) {
-    await syncStateToCloud(CLOUD_KEYS.waNumber, state.waNumber);
+  if (cloudWaNumberResult.ok) {
+    if (typeof cloudWaNumberResult.data === "string") {
+      state.waNumber = sanitizeWaNumber(cloudWaNumberResult.data);
+      localStorage.setItem(STORAGE_KEYS.waNumber, state.waNumber);
+      el.waNumber.value = state.waNumber;
+    } else if (cloudWaNumberResult.data === null && state.waNumber) {
+      await syncStateToCloud(CLOUD_KEYS.waNumber, state.waNumber);
+    }
   }
 
   renderAll();
@@ -510,23 +517,23 @@ function isLocalFileMode() {
 
 async function fetchCloudState(key) {
   if (isLocalFileMode()) {
-    return null;
+    return { ok: false, data: null };
   }
 
   try {
     const response = await fetch(`${CLOUD_ENDPOINT}?key=${encodeURIComponent(key)}`);
     if (!response.ok) {
-      return null;
+      return { ok: false, data: null };
     }
 
     const payload = await response.json();
     if (!payload?.ok) {
-      return null;
+      return { ok: false, data: null };
     }
 
-    return payload.data ?? null;
+    return { ok: true, data: payload.data ?? null };
   } catch {
-    return null;
+    return { ok: false, data: null };
   }
 }
 
@@ -544,10 +551,26 @@ async function syncStateToCloud(key, data) {
       body: JSON.stringify({ key, data }),
     });
 
-    return response.ok;
+    const ok = response.ok;
+    if (!ok) {
+      showCloudSyncWarning();
+    }
+    return ok;
   } catch {
+    showCloudSyncWarning();
     return false;
   }
+}
+
+function showCloudSyncWarning() {
+  if (state.cloudWarningShown) {
+    return;
+  }
+
+  state.cloudWarningShown = true;
+  alert(
+    "No se pudo sincronizar con la nube en este momento. Los cambios quedaron guardados solo en este dispositivo por ahora."
+  );
 }
 
 function renderHeroCarousel() {
