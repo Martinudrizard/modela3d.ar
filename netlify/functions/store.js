@@ -1,3 +1,5 @@
+const { getStore } = require("@netlify/blobs");
+
 const ALLOWED_KEYS = new Set(["products", "heroSlides", "waNumber"]);
 
 const CORS_HEADERS = {
@@ -16,12 +18,13 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const store = context?.blobs?.getStore("modela3d");
+    const store = resolveStore(context);
     if (!store) {
       return response(500, {
         ok: false,
         error: "Blob store unavailable",
-        details: "Netlify runtime blobs context is not available.",
+        details:
+          "No runtime blobs context and no token fallback configured. Set NETLIFY_BLOBS_TOKEN in site env vars.",
       });
     }
 
@@ -78,4 +81,24 @@ function safeJsonParse(text) {
   } catch {
     return { ok: false, value: null };
   }
+}
+
+function resolveStore(context) {
+  const runtimeStore = context?.blobs?.getStore?.("modela3d");
+  if (runtimeStore) {
+    return runtimeStore;
+  }
+
+  const token = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN || "";
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID || "";
+
+  if (!token || !siteID) {
+    return null;
+  }
+
+  return getStore({
+    name: "modela3d",
+    token,
+    siteID,
+  });
 }
