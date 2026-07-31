@@ -135,6 +135,7 @@ const state = {
   heroSlideIndex: 0,
   heroTimerId: null,
   pendingProductFiles: [],
+  editingProductId: "",
   waNumber: localStorage.getItem(STORAGE_KEYS.waNumber) || "",
   adminKey: sessionStorage.getItem(STORAGE_KEYS.adminSessionKey) || "",
   adminUnlocked: Boolean(sessionStorage.getItem(STORAGE_KEYS.adminSessionKey)),
@@ -182,8 +183,11 @@ const el = {
   waNumber: document.getElementById("wa-number"),
   saveWaBtn: document.getElementById("save-wa"),
   productForm: document.getElementById("product-form"),
+  productName: document.getElementById("product-name"),
   productSection: document.getElementById("product-section"),
   productCategory: document.getElementById("product-category"),
+  productDescription: document.getElementById("product-description"),
+  productPrice: document.getElementById("product-price"),
   jarraExtraFields: document.getElementById("jarra-extra-fields"),
   jarraSize: document.getElementById("jarra-size"),
   insumoExtraFields: document.getElementById("insumo-extra-fields"),
@@ -195,6 +199,7 @@ const el = {
   productImageCount: document.getElementById("product-image-count"),
   clearProductImagesBtn: document.getElementById("clear-product-images"),
   publishProductBtn: document.getElementById("publish-product-btn"),
+  cancelEditProductBtn: document.getElementById("cancel-edit-product"),
   heroImagesInput: document.getElementById("hero-images"),
   heroImagePreview: document.getElementById("hero-image-preview"),
   saveHeroImagesBtn: document.getElementById("save-hero-images"),
@@ -226,6 +231,7 @@ async function init() {
   toggleJarraExtraFields(normalizeSection(el.productSection.value) === "Productos" && el.productCategory.value === "Jarras");
   toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
   renderProductImageCount();
+  updateProductFormMode();
   updateAdminVisibility();
   setCartOpen(false);
 
@@ -344,6 +350,10 @@ function bindEvents() {
     renderProductImageCount();
   });
 
+  el.cancelEditProductBtn.addEventListener("click", () => {
+    resetProductForm();
+  });
+
   el.heroImagesInput.addEventListener("change", () => {
     renderLocalImagePreview(el.heroImagesInput.files, el.heroImagePreview);
   });
@@ -373,6 +383,17 @@ function bindEvents() {
     }
 
     const formData = new FormData(el.productForm);
+    const editingProductId = state.editingProductId;
+    const editingProduct = editingProductId
+      ? state.products.find((product) => product.id === editingProductId)
+      : null;
+
+    if (editingProductId && !editingProduct) {
+      alert("No encontramos el producto a editar. Intenta nuevamente.");
+      resetProductForm();
+      return;
+    }
+
     const name = String(formData.get("product-name") || "").trim();
     const section = normalizeSection(String(formData.get("product-section") || ""));
     const category = String(formData.get("product-category") || "").trim();
@@ -390,7 +411,7 @@ function bindEvents() {
       return;
     }
 
-    if (!files.length) {
+    if (!editingProduct && !files.length) {
       alert("Subi al menos una foto.");
       return;
     }
@@ -398,22 +419,27 @@ function bindEvents() {
     setProductSubmitLoading(true);
 
     try {
-      let images;
-      images = await Promise.all(
-        files.map((file) =>
-          processImageFile(file, {
-            maxWidth: IMAGE_UPLOAD_CONFIG.product.maxWidth,
-            maxHeight: IMAGE_UPLOAD_CONFIG.product.maxHeight,
-            quality: IMAGE_UPLOAD_CONFIG.product.quality,
-          })
-        )
-      );
+      const normalizedCategory = normalizeSubsection(section, category);
+      let images = editingProduct?.images || [];
+
+      if (files.length) {
+        images = await Promise.all(
+          files.map((file) =>
+            processImageFile(file, {
+              maxWidth: IMAGE_UPLOAD_CONFIG.product.maxWidth,
+              maxHeight: IMAGE_UPLOAD_CONFIG.product.maxHeight,
+              quality: IMAGE_UPLOAD_CONFIG.product.quality,
+            })
+          )
+        );
+      }
+
       const product = {
-        id: createId(),
+        id: editingProduct?.id || createId(),
         name,
         section,
-        category: normalizeSubsection(section, category),
-        jarraSize: section === "Productos" && normalizeSubsection(section, category) === "Jarras" ? normalizeJarraSize(jarraSize) : "",
+        category: normalizedCategory,
+        jarraSize: section === "Productos" && normalizedCategory === "Jarras" ? normalizeJarraSize(jarraSize) : "",
         description,
         price: Math.round(priceValue),
         images,
@@ -426,20 +452,19 @@ function bindEvents() {
       state.activeCategory = product.category;
       state.activeJarraSize = product.category === "Jarras" ? product.jarraSize || "Todas" : "Todas";
 
-      state.products.unshift(product);
+      if (editingProduct) {
+        state.products = state.products.map((item) => (item.id === editingProduct.id ? product : item));
+      } else {
+        state.products.unshift(product);
+      }
+
       if (!persistProducts()) {
         return;
       }
 
       await syncStateToCloud(CLOUD_KEYS.products, state.products);
 
-      el.productForm.reset();
-      populateAdminSubsections(normalizeSection(el.productSection.value));
-      toggleJarraExtraFields(false);
-      toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
-      state.pendingProductFiles = [];
-      renderProductImageCount();
-      el.productImagePreview.innerHTML = "";
+      resetProductForm();
       renderAll();
       switchView("shop");
     } catch {
@@ -549,6 +574,9 @@ function bindEvents() {
 
     if (target.matches("[data-delete-id]")) {
       const productId = target.dataset.deleteId;
+      if (state.editingProductId && state.editingProductId === productId) {
+        resetProductForm();
+      }
       state.products = state.products.filter((product) => product.id !== productId);
       persistProducts();
 
@@ -562,6 +590,11 @@ function bindEvents() {
       persistCart();
       void syncStateToCloud(CLOUD_KEYS.products, state.products);
       renderAll();
+      return;
+    }
+
+    if (target.matches("[data-edit-id]")) {
+      startProductEdit(target.dataset.editId);
     }
   });
 
@@ -1375,7 +1408,10 @@ function renderAdminProducts() {
         <h4>${escapeHtml(product.name)}</h4>
         <p>${escapeHtml(normalizeSection(product.section))} · ${escapeHtml(product.category)} · ${formatCurrency(product.price)} · ${product.images.length} foto(s)</p>
       </div>
-      <button class="delete-btn" data-delete-id="${product.id}" type="button">Eliminar</button>
+      <div class="admin-item-actions">
+        <button class="edit-btn" data-edit-id="${product.id}" type="button">Editar</button>
+        <button class="delete-btn" data-delete-id="${product.id}" type="button">Eliminar</button>
+      </div>
     `;
 
     el.adminProductList.appendChild(row);
@@ -1692,7 +1728,81 @@ function createId() {
 
 function setProductSubmitLoading(isLoading) {
   el.publishProductBtn.disabled = isLoading;
-  el.publishProductBtn.textContent = isLoading ? "Publicando..." : "Publicar producto";
+  if (isLoading) {
+    el.publishProductBtn.textContent = state.editingProductId ? "Guardando cambios..." : "Publicando...";
+    return;
+  }
+
+  updateProductFormMode();
+}
+
+function updateProductFormMode() {
+  const isEditing = Boolean(state.editingProductId);
+  el.publishProductBtn.textContent = isEditing ? "Guardar cambios" : "Publicar producto";
+  el.cancelEditProductBtn.classList.toggle("hidden-block", !isEditing);
+}
+
+function resetProductForm() {
+  state.editingProductId = "";
+  state.pendingProductFiles = [];
+  el.productForm.reset();
+  el.productImagesInput.value = "";
+  el.productImagePreview.innerHTML = "";
+  populateAdminSubsections(normalizeSection(el.productSection.value));
+  toggleJarraExtraFields(false);
+  toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
+  renderProductImageCount();
+  updateProductFormMode();
+}
+
+function startProductEdit(productId) {
+  const targetProduct = state.products.find((item) => item.id === productId);
+  if (!targetProduct) {
+    alert("No encontramos ese producto para editar.");
+    return;
+  }
+
+  state.editingProductId = targetProduct.id;
+  state.pendingProductFiles = [];
+
+  el.productName.value = targetProduct.name;
+  el.productSection.value = targetProduct.section;
+  populateAdminSubsections(targetProduct.section, targetProduct.category);
+  el.productDescription.value = targetProduct.description;
+  el.productPrice.value = String(targetProduct.price);
+  el.insumoBrand.value = targetProduct.brand || "";
+  el.insumoMaterial.value = targetProduct.material || "";
+  el.insumoType.value = targetProduct.insumoType || "";
+  el.jarraSize.value = normalizeJarraSize(targetProduct.jarraSize || "500ml");
+
+  toggleInsumoExtraFields(targetProduct.section === "Insumos");
+  toggleJarraExtraFields(targetProduct.section === "Productos" && targetProduct.category === "Jarras");
+
+  el.productImagePreview.innerHTML = "";
+  renderImagePreviewFromUrls(targetProduct.images, el.productImagePreview);
+  renderProductImageCount();
+  updateProductFormMode();
+
+  el.productForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderImagePreviewFromUrls(images, container) {
+  const urls = Array.isArray(images) ? images : [];
+
+  urls.slice(0, 8).forEach((src) => {
+    const img = document.createElement("img");
+    img.className = "image-preview-thumb";
+    img.alt = "Imagen actual";
+    img.src = src;
+    container.appendChild(img);
+  });
+
+  if (urls.length > 8) {
+    const more = document.createElement("span");
+    more.className = "image-preview-more";
+    more.textContent = `+${urls.length - 8} mas`;
+    container.appendChild(more);
+  }
 }
 
 function renderProductImageCount() {
