@@ -50,6 +50,10 @@ exports.handler = async (event, context) => {
       }
 
       const { key, data } = parsed.value;
+      if (key === "__auth") {
+        return response(200, { ok: true });
+      }
+
       if (!ALLOWED_KEYS.has(key)) {
         return response(400, { ok: false, error: "Invalid key" });
       }

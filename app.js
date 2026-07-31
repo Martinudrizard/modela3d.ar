@@ -99,11 +99,16 @@ const state = {
   pendingProductFiles: [],
   waNumber: localStorage.getItem(STORAGE_KEYS.waNumber) || "",
   adminKey: sessionStorage.getItem(STORAGE_KEYS.adminSessionKey) || "",
+  adminUnlocked: Boolean(sessionStorage.getItem(STORAGE_KEYS.adminSessionKey)),
+  logoTapCount: 0,
+  logoTapTimerId: null,
   cloudWarningShown: false,
 };
 
 const el = {
   viewButtons: Array.from(document.querySelectorAll(".view-btn")),
+  adminViewButton: document.querySelector('.view-btn[data-view="admin"]'),
+  brandLogo: document.getElementById("brand-logo"),
   views: {
     shop: document.getElementById("shop-view"),
     admin: document.getElementById("admin-view"),
@@ -164,6 +169,7 @@ async function init() {
   el.waNumber.value = state.waNumber;
   populateAdminSubsections(normalizeSection(el.productSection.value));
   renderProductImageCount();
+  updateAdminVisibility();
   setCartOpen(false);
 
   bindEvents();
@@ -176,6 +182,8 @@ function bindEvents() {
   el.viewButtons.forEach((btn) => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
+
+  el.brandLogo.addEventListener("click", handleHiddenAdminTap);
 
   el.cartToggle.addEventListener("click", () => {
     setCartOpen(!el.cartPanel.classList.contains("open"));
@@ -540,6 +548,84 @@ function switchView(viewName) {
   });
 }
 
+function updateAdminVisibility() {
+  if (!el.adminViewButton) {
+    return;
+  }
+
+  el.adminViewButton.style.display = state.adminUnlocked ? "" : "none";
+}
+
+function handleHiddenAdminTap() {
+  state.logoTapCount += 1;
+
+  if (state.logoTapTimerId) {
+    window.clearTimeout(state.logoTapTimerId);
+  }
+
+  state.logoTapTimerId = window.setTimeout(() => {
+    state.logoTapCount = 0;
+    state.logoTapTimerId = null;
+  }, 1800);
+
+  if (state.logoTapCount >= 5) {
+    state.logoTapCount = 0;
+    window.clearTimeout(state.logoTapTimerId);
+    state.logoTapTimerId = null;
+    void attemptAdminUnlock();
+  }
+}
+
+async function attemptAdminUnlock() {
+  const typed = window.prompt("Acceso privado: ingresa clave Admin", "");
+  if (!typed || !typed.trim()) {
+    return;
+  }
+
+  state.adminKey = typed.trim();
+  sessionStorage.setItem(STORAGE_KEYS.adminSessionKey, state.adminKey);
+
+  const valid = await validateAdminKey();
+  if (!valid) {
+    clearAdminSession();
+    alert("Clave invalida.");
+    return;
+  }
+
+  state.adminUnlocked = true;
+  updateAdminVisibility();
+  switchView("admin");
+}
+
+async function validateAdminKey() {
+  if (isLocalFileMode()) {
+    return true;
+  }
+
+  if (!state.adminKey) {
+    return false;
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      CLOUD_ENDPOINT,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Key": state.adminKey,
+        },
+        body: JSON.stringify({ key: "__auth", data: true }),
+      },
+      CLOUD_TIMEOUT_MS
+    );
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 function renderAll() {
   renderHeroCarousel();
   renderSectionChips();
@@ -659,27 +745,23 @@ async function syncStateToCloud(key, data) {
 }
 
 function ensureAdminAccess() {
-  if (state.adminKey) {
+  if (state.adminUnlocked && state.adminKey) {
     return true;
   }
 
-  const typed = window.prompt("Ingresa la clave de Admin:", "");
-  if (!typed || !typed.trim()) {
-    return false;
-  }
-
-  state.adminKey = typed.trim();
-  sessionStorage.setItem(STORAGE_KEYS.adminSessionKey, state.adminKey);
-  return true;
+  showAdminAccessRequired();
+  return false;
 }
 
 function clearAdminSession() {
   state.adminKey = "";
+  state.adminUnlocked = false;
   sessionStorage.removeItem(STORAGE_KEYS.adminSessionKey);
+  updateAdminVisibility();
 }
 
 function showAdminAccessRequired() {
-  alert("Acceso de Admin requerido o clave invalida. Vuelve a ingresar la clave.");
+  alert("Admin oculto: toca 5 veces el logo y luego ingresa la clave.");
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {
