@@ -817,6 +817,9 @@ button:disabled {
 
 .cart-toggle {
   position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   background: #d71920;
   color: #fff;
@@ -826,6 +829,15 @@ button:disabled {
   letter-spacing: 0.3px;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.cart-toggle-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.cart-toggle-count {
+  font-weight: 800;
 }
 
 .empty {
@@ -890,6 +902,47 @@ button:disabled {
   .header-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .cart-toggle {
+    position: fixed;
+    top: 76px;
+    right: 12px;
+    left: auto;
+    bottom: auto;
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    z-index: 36;
+    background: #111;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+  }
+
+  .cart-toggle-label {
+    display: none;
+  }
+
+  .cart-toggle-icon {
+    font-size: 1.1rem;
+  }
+
+  .cart-toggle-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #d71920;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 0.72rem;
+    border: 2px solid #fff;
+    padding: 0 4px;
   }
 
   .hero {
