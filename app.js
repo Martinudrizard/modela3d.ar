@@ -206,7 +206,6 @@ const el = {
   insumoExtraFields: document.getElementById("insumo-extra-fields"),
   insumoBrand: document.getElementById("insumo-brand"),
   insumoMaterial: document.getElementById("insumo-material"),
-  insumoType: document.getElementById("insumo-type"),
   productImagesInput: document.getElementById("product-images"),
   productPasteTarget: document.getElementById("product-paste-target"),
   productImagePreview: document.getElementById("product-image-preview"),
@@ -416,7 +415,6 @@ function bindEvents() {
     const jarraSize = String(formData.get("jarra-size") || "").trim();
     const brand = String(formData.get("insumo-brand") || "").trim();
     const material = String(formData.get("insumo-material") || "").trim();
-    const insumoType = String(formData.get("insumo-type") || "").trim();
 
     const files = [...state.pendingProductFiles];
 
@@ -459,7 +457,7 @@ function bindEvents() {
         images,
         brand: section === "Insumos" ? brand : "",
         material: section === "Insumos" ? material : "",
-        insumoType: section === "Insumos" ? normalizeInsumoType(insumoType || category) : "",
+        insumoType: section === "Insumos" ? normalizeInsumoType(category) : "",
       };
 
       state.activeSection = section;
@@ -1627,12 +1625,10 @@ function toggleInsumoExtraFields(show) {
   el.insumoExtraFields.classList.toggle("show", show);
   el.insumoBrand.required = false;
   el.insumoMaterial.required = false;
-  el.insumoType.required = false;
 
   if (!show) {
     el.insumoBrand.value = "";
     el.insumoMaterial.value = "";
-    el.insumoType.value = "";
   }
 }
 
@@ -1788,7 +1784,6 @@ function startProductEdit(productId) {
   el.productPrice.value = String(targetProduct.price);
   el.insumoBrand.value = targetProduct.brand || "";
   el.insumoMaterial.value = targetProduct.material || "";
-  el.insumoType.value = targetProduct.insumoType || "";
   el.jarraSize.value = normalizeJarraSize(targetProduct.jarraSize || "500ml");
 
   toggleInsumoExtraFields(targetProduct.section === "Insumos");
