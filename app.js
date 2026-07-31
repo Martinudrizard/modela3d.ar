@@ -476,7 +476,9 @@ function bindEvents() {
       if (!cloudSaved) {
         state.products = previousProducts;
         renderAll();
-        alert("No se pudo guardar el producto en la base de datos. Revisa la conexion e intenta de nuevo.");
+        if (state.adminUnlocked && state.adminKey) {
+          alert("No se pudo guardar el producto en la base de datos. Revisa la conexion e intenta de nuevo.");
+        }
         return;
       }
 
@@ -585,7 +587,9 @@ function bindEvents() {
     if (!cloudSaved) {
       state.products = previousProducts;
       renderAll();
-      alert("No se pudo restaurar demo en la base de datos.");
+      if (state.adminUnlocked && state.adminKey) {
+        alert("No se pudo restaurar demo en la base de datos.");
+      }
       return;
     }
 
@@ -618,7 +622,9 @@ function bindEvents() {
       if (!cloudSaved) {
         state.products = previousProducts;
         renderAll();
-        alert("No se pudo eliminar en la base de datos. Intenta nuevamente.");
+        if (state.adminUnlocked && state.adminKey) {
+          alert("No se pudo eliminar en la base de datos. Intenta nuevamente.");
+        }
         return;
       }
 
