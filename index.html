@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260730b" />
   </head>
   <body>
     <div class="bg-shape bg-shape-a"></div>
@@ -75,9 +75,53 @@
           <div id="section-chips" class="chips section-chips"></div>
         </section>
 
-        <section class="category-filter" aria-label="Filtrar por categoria">
-          <h3>Explora por categoria</h3>
-          <div id="category-chips" class="chips"></div>
+        <section id="product-subsection-filter" class="category-filter" aria-label="Subsecciones de productos">
+          <h3>Productos</h3>
+          <div id="product-subsection-chips" class="chips"></div>
+        </section>
+
+        <section id="jarra-size-filter" class="category-filter hidden-block" aria-label="Filtrar jarras por capacidad">
+          <h3>Capacidad de jarras</h3>
+          <div id="jarra-size-chips" class="chips"></div>
+        </section>
+
+        <section id="insumos-shell" class="insumos-shell" aria-label="Filtros de insumos">
+          <aside class="insumos-sidebar">
+            <h3>Filtrar por</h3>
+
+            <label for="insumos-search">Buscar</label>
+            <input id="insumos-search" type="search" placeholder="Buscar insumo" />
+
+            <div class="insumo-filter-group">
+              <h4>Marca</h4>
+              <div id="insumos-brand-filters" class="insumo-checkbox-list"></div>
+            </div>
+
+            <div class="insumo-filter-group">
+              <h4>Tipo de material</h4>
+              <div id="insumos-material-filters" class="insumo-checkbox-list"></div>
+            </div>
+
+            <div class="insumo-filter-group">
+              <h4>Insumo</h4>
+              <div id="insumos-type-filters" class="insumo-checkbox-list"></div>
+            </div>
+          </aside>
+
+          <div class="insumos-results">
+            <div class="insumos-results-head">
+              <p id="insumos-count">0 productos</p>
+              <div class="insumos-sort-wrap">
+                <label for="insumos-sort">Ordenar por</label>
+                <select id="insumos-sort">
+                  <option value="relevancia">Relevancia</option>
+                  <option value="precio-asc">Precio: menor a mayor</option>
+                  <option value="precio-desc">Precio: mayor a menor</option>
+                </select>
+              </div>
+            </div>
+            <section id="insumos-results-grid" class="products-sections"></section>
+          </div>
         </section>
 
         <section id="products-sections" class="products-sections"></section>
@@ -115,14 +159,43 @@
 
               <label for="product-section">Seccion</label>
               <select id="product-section" name="product-section" required>
-                <option value="Llaveros">Llaveros</option>
-                <option value="Jarras">Jarras</option>
-                <option value="Hogar">Hogar</option>
-                <option value="Soportes">Soportes</option>
+                <option value="Productos">Productos</option>
+                <option value="Insumos">Insumos</option>
               </select>
 
-              <label for="product-category">Subseccion</label>
+              <label for="product-category">Tipo/Subseccion</label>
               <select id="product-category" name="product-category" required></select>
+
+              <div id="jarra-extra-fields" class="jarra-extra-fields">
+                <label for="jarra-size">Capacidad de jarra</label>
+                <select id="jarra-size" name="jarra-size">
+                  <option value="500ml">500 ml</option>
+                  <option value="1 litro">1 litro</option>
+                </select>
+              </div>
+
+              <div id="insumo-extra-fields" class="insumo-extra-fields">
+                <label for="insumo-brand">Marca</label>
+                <input id="insumo-brand" name="insumo-brand" maxlength="40" placeholder="Ej: Hellbot" />
+
+                <label for="insumo-material">Material</label>
+                <select id="insumo-material" name="insumo-material">
+                  <option value="">Seleccionar</option>
+                  <option value="PLA">PLA</option>
+                  <option value="PETG">PETG</option>
+                  <option value="ABS">ABS</option>
+                  <option value="Resina">Resina</option>
+                </select>
+
+                <label for="insumo-type">Tipo de insumo</label>
+                <select id="insumo-type" name="insumo-type">
+                  <option value="">Seleccionar</option>
+                  <option value="Filamento">Filamento</option>
+                  <option value="Resina">Resina</option>
+                  <option value="Repuesto">Repuesto</option>
+                  <option value="Accesorio">Accesorio</option>
+                </select>
+              </div>
 
               <label for="product-description">Descripcion</label>
               <textarea
@@ -243,6 +316,6 @@
       </article>
     </template>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260730b"></script>
   </body>
 </html>

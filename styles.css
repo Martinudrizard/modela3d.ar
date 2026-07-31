@@ -303,6 +303,94 @@ main {
   padding: 12px;
 }
 
+.hidden-block {
+  display: none !important;
+}
+
+.insumos-shell {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 12px;
+}
+
+.insumos-sidebar {
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 12px;
+  padding: 12px;
+  align-self: start;
+}
+
+.insumos-sidebar h3 {
+  margin: 0 0 12px;
+  font-family: "Bebas Neue", sans-serif;
+  letter-spacing: 0.8px;
+  font-size: 1.45rem;
+}
+
+.insumo-filter-group {
+  margin-top: 14px;
+}
+
+.insumo-filter-group h4 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.insumo-checkbox-list {
+  display: grid;
+  gap: 7px;
+}
+
+.insumo-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+}
+
+.insumo-check input {
+  width: 16px;
+  height: 16px;
+}
+
+.insumos-results {
+  display: grid;
+  gap: 10px;
+}
+
+.insumos-results-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.insumos-results-head p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.insumos-sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insumos-sort-wrap label {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.insumos-sort-wrap select {
+  min-width: 210px;
+}
+
 .section-filter {
   margin-top: 14px;
   background: #111;
@@ -332,6 +420,22 @@ main {
 .admin-header h2,
 .card h3 {
   margin: 0 0 10px;
+}
+
+.insumo-extra-fields {
+  display: none;
+}
+
+.insumo-extra-fields.show {
+  display: block;
+}
+
+.jarra-extra-fields {
+  display: none;
+}
+
+.jarra-extra-fields.show {
+  display: block;
 }
 
 .chips {
@@ -521,6 +625,10 @@ main {
 @media (max-width: 1180px) {
   .products-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+
+  .insumos-shell {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -952,6 +1060,22 @@ button:disabled {
   .products-grid {
     grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
     gap: 8px;
+  }
+
+  .insumos-results-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .insumos-sort-wrap {
+    width: 100%;
+    display: grid;
+    gap: 6px;
+  }
+
+  .insumos-sort-wrap select {
+    width: 100%;
+    min-width: 0;
   }
 
   main {

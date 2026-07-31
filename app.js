@@ -29,21 +29,22 @@ const IMAGE_UPLOAD_CONFIG = {
   },
 };
 
-const SHOP_SECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes"];
+const SHOP_SECTIONS = ["Productos", "Insumos"];
+const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes"];
+const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
+const JARRA_SIZES = ["500ml", "1 litro"];
 
 const SECTION_SUBSECTIONS = {
-  Llaveros: ["Personalizados", "Tematicos", "Eventos"],
-  Jarras: ["500ml", "350ml", "Personalizadas"],
-  Hogar: ["Decoracion", "Organizacion", "Lamparas"],
-  Soportes: ["Celular", "Notebook", "Consola"],
+  Productos: PRODUCT_SUBSECTIONS,
+  Insumos: INSUMO_SUBSECTIONS,
 };
 
 const DEMO_PRODUCTS = [
   {
     id: createId(),
     name: "Llavero Pixel Corazon",
-    section: "Llaveros",
-    category: "Tematicos",
+    section: "Productos",
+    category: "Llaveros",
     description: "Llavero impreso en PLA con acabado brillante.",
     price: 3200,
     images: [
@@ -54,8 +55,8 @@ const DEMO_PRODUCTS = [
   {
     id: createId(),
     name: "Jarra Personalizada 500ml",
-    section: "Jarras",
-    category: "500ml",
+    section: "Productos",
+    category: "Jarras",
     description: "Jarra personalizada con acabado resistente y gran detalle.",
     price: 16500,
     images: [
@@ -65,8 +66,8 @@ const DEMO_PRODUCTS = [
   {
     id: createId(),
     name: "Maceta Geometrica Mini",
-    section: "Hogar",
-    category: "Decoracion",
+    section: "Productos",
+    category: "Hogar",
     description: "Ideal para suculentas. Base estable y diseno moderno.",
     price: 5800,
     images: [
@@ -76,8 +77,8 @@ const DEMO_PRODUCTS = [
   {
     id: createId(),
     name: "Soporte de Celular Articulado",
-    section: "Soportes",
-    category: "Celular",
+    section: "Productos",
+    category: "Soportes",
     description: "Soporte firme y plegable para escritorio o mesa de luz.",
     price: 9200,
     images: [
@@ -87,13 +88,30 @@ const DEMO_PRODUCTS = [
   },
   {
     id: createId(),
-    name: "Organizador Modular de Escritorio",
-    section: "Hogar",
-    category: "Organizacion",
-    description: "Organizador modular para lapices, tijeras y accesorios de uso diario.",
-    price: 13900,
+    name: "Filamento PLA Recarga 1kg",
+    section: "Insumos",
+    category: "Filamento",
+    description: "Recarga PLA 1.75mm para impresion cotidiana con excelente terminacion.",
+    price: 21900,
+    brand: "Hellbot",
+    material: "PLA",
+    insumoType: "Filamento",
     images: [
-      "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1610147594469-fda5f31e38dd?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
+    name: "Resina UV Gris 1kg",
+    section: "Insumos",
+    category: "Resina",
+    description: "Resina para impresoras UV con curado rapido y gran definicion.",
+    price: 28900,
+    brand: "Anycubic",
+    material: "Resina",
+    insumoType: "Resina",
+    images: [
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80",
     ],
   },
 ];
@@ -102,8 +120,16 @@ const state = {
   products: loadFromStorage(STORAGE_KEYS.products, []),
   cart: loadFromStorage(STORAGE_KEYS.cart, {}),
   activeView: "shop",
-  activeSection: "Llaveros",
-  activeCategory: "Todas",
+  activeSection: "Productos",
+  activeCategory: "Llaveros",
+  activeJarraSize: "Todas",
+  insumosFilters: {
+    query: "",
+    sort: "relevancia",
+    brands: [],
+    materials: [],
+    types: [],
+  },
   imageIndexByProduct: {},
   heroSlides: loadFromStorage(STORAGE_KEYS.heroSlides, []),
   heroSlideIndex: 0,
@@ -126,7 +152,18 @@ const el = {
     admin: document.getElementById("admin-view"),
   },
   sectionChips: document.getElementById("section-chips"),
-  categoryChips: document.getElementById("category-chips"),
+  productSubsectionFilter: document.getElementById("product-subsection-filter"),
+  productSubsectionChips: document.getElementById("product-subsection-chips"),
+  jarraSizeFilter: document.getElementById("jarra-size-filter"),
+  jarraSizeChips: document.getElementById("jarra-size-chips"),
+  insumosShell: document.getElementById("insumos-shell"),
+  insumosResultsGrid: document.getElementById("insumos-results-grid"),
+  insumosSearch: document.getElementById("insumos-search"),
+  insumosSort: document.getElementById("insumos-sort"),
+  insumosCount: document.getElementById("insumos-count"),
+  insumosBrandFilters: document.getElementById("insumos-brand-filters"),
+  insumosMaterialFilters: document.getElementById("insumos-material-filters"),
+  insumosTypeFilters: document.getElementById("insumos-type-filters"),
   productsSections: document.getElementById("products-sections"),
   productCardTemplate: document.getElementById("product-card-template"),
   heroCarouselImage: document.getElementById("hero-carousel-image"),
@@ -147,6 +184,12 @@ const el = {
   productForm: document.getElementById("product-form"),
   productSection: document.getElementById("product-section"),
   productCategory: document.getElementById("product-category"),
+  jarraExtraFields: document.getElementById("jarra-extra-fields"),
+  jarraSize: document.getElementById("jarra-size"),
+  insumoExtraFields: document.getElementById("insumo-extra-fields"),
+  insumoBrand: document.getElementById("insumo-brand"),
+  insumoMaterial: document.getElementById("insumo-material"),
+  insumoType: document.getElementById("insumo-type"),
   productImagesInput: document.getElementById("product-images"),
   productImagePreview: document.getElementById("product-image-preview"),
   productImageCount: document.getElementById("product-image-count"),
@@ -180,6 +223,8 @@ async function init() {
 
   el.waNumber.value = state.waNumber;
   populateAdminSubsections(normalizeSection(el.productSection.value));
+  toggleJarraExtraFields(normalizeSection(el.productSection.value) === "Productos" && el.productCategory.value === "Jarras");
+  toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
   renderProductImageCount();
   updateAdminVisibility();
   setCartOpen(false);
@@ -253,8 +298,30 @@ function bindEvents() {
   el.heroMedia.addEventListener("mouseleave", startHeroAutoplay);
 
   el.productSection.addEventListener("change", () => {
-    populateAdminSubsections(el.productSection.value);
+    const normalizedSection = normalizeSection(el.productSection.value);
+    populateAdminSubsections(normalizedSection);
+    toggleInsumoExtraFields(normalizedSection === "Insumos");
+    toggleJarraExtraFields(normalizedSection === "Productos" && el.productCategory.value === "Jarras");
   });
+
+  el.productCategory.addEventListener("change", () => {
+    const normalizedSection = normalizeSection(el.productSection.value);
+    toggleJarraExtraFields(normalizedSection === "Productos" && el.productCategory.value === "Jarras");
+  });
+
+  el.insumosSearch.addEventListener("input", () => {
+    state.insumosFilters.query = String(el.insumosSearch.value || "").trim();
+    renderProducts();
+  });
+
+  el.insumosSort.addEventListener("change", () => {
+    state.insumosFilters.sort = el.insumosSort.value || "relevancia";
+    renderProducts();
+  });
+
+  el.insumosBrandFilters.addEventListener("change", handleInsumosCheckboxFilters);
+  el.insumosMaterialFilters.addEventListener("change", handleInsumosCheckboxFilters);
+  el.insumosTypeFilters.addEventListener("change", handleInsumosCheckboxFilters);
 
   el.productImagesInput.addEventListener("change", () => {
     const selected = Array.from(el.productImagesInput.files || []);
@@ -311,6 +378,10 @@ function bindEvents() {
     const category = String(formData.get("product-category") || "").trim();
     const description = String(formData.get("product-description") || "").trim();
     const priceValue = Number(formData.get("product-price"));
+    const jarraSize = String(formData.get("jarra-size") || "").trim();
+    const brand = String(formData.get("insumo-brand") || "").trim();
+    const material = String(formData.get("insumo-material") || "").trim();
+    const insumoType = String(formData.get("insumo-type") || "").trim();
 
     const files = [...state.pendingProductFiles];
 
@@ -342,10 +413,18 @@ function bindEvents() {
         name,
         section,
         category: normalizeSubsection(section, category),
+        jarraSize: section === "Productos" && normalizeSubsection(section, category) === "Jarras" ? normalizeJarraSize(jarraSize) : "",
         description,
         price: Math.round(priceValue),
         images,
+        brand: section === "Insumos" ? brand : "",
+        material: section === "Insumos" ? material : "",
+        insumoType: section === "Insumos" ? normalizeInsumoType(insumoType || category) : "",
       };
+
+      state.activeSection = section;
+      state.activeCategory = product.category;
+      state.activeJarraSize = product.category === "Jarras" ? product.jarraSize || "Todas" : "Todas";
 
       state.products.unshift(product);
       if (!persistProducts()) {
@@ -356,6 +435,8 @@ function bindEvents() {
 
       el.productForm.reset();
       populateAdminSubsections(normalizeSection(el.productSection.value));
+      toggleJarraExtraFields(false);
+      toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
       state.pendingProductFiles = [];
       renderProductImageCount();
       el.productImagePreview.innerHTML = "";
@@ -485,36 +566,11 @@ function bindEvents() {
   });
 
   el.productsSections.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
+    handleProductGridClick(event);
+  });
 
-    if (target.matches(".btn-add")) {
-      const productId = target.dataset.productId;
-      changeQty(productId, 1);
-      return;
-    }
-
-    if (target.matches(".dot")) {
-      const productId = target.dataset.productId;
-      const index = Number(target.dataset.imageIndex);
-      state.imageIndexByProduct[productId] = index;
-      renderProducts();
-      return;
-    }
-
-    if (target.matches(".product-prev")) {
-      const productId = target.dataset.productId;
-      moveProductImage(productId, -1);
-      return;
-    }
-
-    if (target.matches(".product-next")) {
-      const productId = target.dataset.productId;
-      moveProductImage(productId, 1);
-      return;
-    }
+  el.insumosResultsGrid.addEventListener("click", (event) => {
+    handleProductGridClick(event);
   });
 
   el.cartItems.addEventListener("click", (event) => {
@@ -641,7 +697,10 @@ async function validateAdminKey() {
 function renderAll() {
   renderHeroCarousel();
   renderSectionChips();
-  renderCategoryChips();
+  renderProductSubsectionChips();
+  renderJarraSizeChips();
+  renderInsumosFilterPanel();
+  updateCatalogVisibility();
   renderProducts();
   renderCart();
   renderAdminProducts();
@@ -877,9 +936,13 @@ function renderSectionChips() {
 
     button.addEventListener("click", () => {
       state.activeSection = section;
-      state.activeCategory = "Todas";
+      state.activeCategory = section === "Productos" ? PRODUCT_SUBSECTIONS[0] : "Todas";
+      state.activeJarraSize = "Todas";
       renderSectionChips();
-      renderCategoryChips();
+      renderProductSubsectionChips();
+      renderJarraSizeChips();
+      renderInsumosFilterPanel();
+      updateCatalogVisibility();
       renderProducts();
     });
 
@@ -887,87 +950,139 @@ function renderSectionChips() {
   });
 }
 
-function getCategories() {
-  const dynamic = [
-    ...new Set(
-      state.products
-        .filter((p) => normalizeSection(p.section) === state.activeSection)
-        .map((p) => p.category)
-    ),
-  ].sort((a, b) => a.localeCompare(b, "es"));
-  return ["Todas", ...dynamic];
-}
+function renderProductSubsectionChips() {
+  const isProducts = state.activeSection === "Productos";
+  el.productSubsectionFilter.classList.toggle("hidden-block", !isProducts);
 
-function renderCategoryChips() {
-  const categories = getCategories();
-
-  if (!categories.includes(state.activeCategory)) {
-    state.activeCategory = "Todas";
-  }
-
-  el.categoryChips.innerHTML = "";
-
-  categories.forEach((category) => {
-    const button = document.createElement("button");
-    button.className = "chip";
-    button.textContent = category;
-    button.classList.toggle("active", category === state.activeCategory);
-
-    button.addEventListener("click", () => {
-      state.activeCategory = category;
-      renderProducts();
-      renderCategoryChips();
-    });
-
-    el.categoryChips.appendChild(button);
-  });
-}
-
-function renderProducts() {
-  const bySection = state.products.filter(
-    (product) => normalizeSection(product.section) === state.activeSection
-  );
-
-  const sourceProducts =
-    state.activeCategory === "Todas"
-      ? bySection
-      : bySection.filter((product) => product.category === state.activeCategory);
-
-  const grouped = sourceProducts.reduce((acc, product) => {
-    if (!acc[product.category]) {
-      acc[product.category] = [];
-    }
-    acc[product.category].push(product);
-    return acc;
-  }, {});
-
-  el.productsSections.innerHTML = "";
-
-  const categoryEntries = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0], "es"));
-
-  if (!categoryEntries.length) {
-    el.productsSections.innerHTML = `<p class=\"empty\">No hay productos para mostrar en ${state.activeSection}.</p>`;
+  if (!isProducts) {
     return;
   }
 
-  categoryEntries.forEach(([category, products]) => {
-    const block = document.createElement("section");
-    block.className = "category-block";
+  if (!PRODUCT_SUBSECTIONS.includes(state.activeCategory)) {
+    state.activeCategory = PRODUCT_SUBSECTIONS[0];
+  }
 
-    const title = document.createElement("h3");
-    title.textContent = category;
-
-    const grid = document.createElement("div");
-    grid.className = "products-grid";
-
-    products.forEach((product) => {
-      grid.appendChild(buildProductCard(product));
+  el.productSubsectionChips.innerHTML = "";
+  PRODUCT_SUBSECTIONS.forEach((subsection) => {
+    const button = document.createElement("button");
+    button.className = "chip";
+    button.textContent = subsection;
+    button.classList.toggle("active", subsection === state.activeCategory);
+    button.addEventListener("click", () => {
+      state.activeCategory = subsection;
+      state.activeJarraSize = "Todas";
+      renderProductSubsectionChips();
+      renderJarraSizeChips();
+      renderProducts();
     });
-
-    block.appendChild(title);
-    block.appendChild(grid);
-    el.productsSections.appendChild(block);
+    el.productSubsectionChips.appendChild(button);
   });
+}
+
+function renderJarraSizeChips() {
+  const show = state.activeSection === "Productos" && state.activeCategory === "Jarras";
+  el.jarraSizeFilter.classList.toggle("hidden-block", !show);
+
+  if (!show) {
+    return;
+  }
+
+  const options = ["Todas", ...JARRA_SIZES];
+  if (!options.includes(state.activeJarraSize)) {
+    state.activeJarraSize = "Todas";
+  }
+
+  el.jarraSizeChips.innerHTML = "";
+  options.forEach((size) => {
+    const button = document.createElement("button");
+    button.className = "chip";
+    button.textContent = size === "500ml" ? "500 ml" : size;
+    button.classList.toggle("active", size === state.activeJarraSize);
+    button.addEventListener("click", () => {
+      state.activeJarraSize = size;
+      renderJarraSizeChips();
+      renderProducts();
+    });
+    el.jarraSizeChips.appendChild(button);
+  });
+}
+
+function updateCatalogVisibility() {
+  const isProducts = state.activeSection === "Productos";
+  el.productsSections.classList.toggle("hidden-block", !isProducts);
+  el.insumosShell.classList.toggle("hidden-block", isProducts);
+}
+
+function renderProducts() {
+  if (state.activeSection === "Productos") {
+    renderProductCatalog();
+    return;
+  }
+
+  renderInsumosCatalog();
+}
+
+function renderProductCatalog() {
+  let sourceProducts = state.products.filter(
+    (product) => product.section === "Productos" && product.category === state.activeCategory
+  );
+
+  if (state.activeCategory === "Jarras" && state.activeJarraSize !== "Todas") {
+    sourceProducts = sourceProducts.filter((product) => normalizeJarraSize(product.jarraSize) === state.activeJarraSize);
+  }
+
+  el.productsSections.innerHTML = "";
+
+  if (!sourceProducts.length) {
+    el.productsSections.innerHTML = `<p class="empty">No hay productos para mostrar en ${state.activeCategory}.</p>`;
+    return;
+  }
+
+  const block = document.createElement("section");
+  block.className = "category-block";
+
+  const title = document.createElement("h3");
+  title.textContent = state.activeCategory;
+
+  const grid = document.createElement("div");
+  grid.className = "products-grid";
+
+  sourceProducts.forEach((product) => {
+    grid.appendChild(buildProductCard(product));
+  });
+
+  block.appendChild(title);
+  block.appendChild(grid);
+  el.productsSections.appendChild(block);
+}
+
+function renderInsumosCatalog() {
+  const sourceProducts = getFilteredInsumosProducts();
+
+  el.insumosResultsGrid.innerHTML = "";
+  el.insumosCount.textContent = `${sourceProducts.length} producto(s)`;
+
+  if (!sourceProducts.length) {
+    el.insumosResultsGrid.innerHTML = '<p class="empty">No encontramos insumos con esos filtros.</p>';
+    return;
+  }
+
+  const block = document.createElement("section");
+  block.className = "category-block";
+
+  const title = document.createElement("h3");
+  title.textContent = "Insumos";
+
+  const grid = document.createElement("div");
+  grid.className = "products-grid";
+
+  sourceProducts.forEach((product) => {
+    grid.appendChild(buildProductCard(product));
+  });
+
+  block.appendChild(title);
+  block.appendChild(grid);
+  el.insumosResultsGrid.appendChild(block);
 }
 
 function buildProductCard(product) {
@@ -1031,6 +1146,160 @@ function moveProductImage(productId, delta) {
   const nextIndex = (currentIndex + delta + product.images.length) % product.images.length;
   state.imageIndexByProduct[productId] = nextIndex;
   renderProducts();
+}
+
+function handleProductGridClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  if (target.matches(".btn-add")) {
+    const productId = target.dataset.productId;
+    changeQty(productId, 1);
+    return;
+  }
+
+  if (target.matches(".dot")) {
+    const productId = target.dataset.productId;
+    const index = Number(target.dataset.imageIndex);
+    state.imageIndexByProduct[productId] = index;
+    renderProducts();
+    return;
+  }
+
+  if (target.matches(".product-prev")) {
+    const productId = target.dataset.productId;
+    moveProductImage(productId, -1);
+    return;
+  }
+
+  if (target.matches(".product-next")) {
+    const productId = target.dataset.productId;
+    moveProductImage(productId, 1);
+  }
+}
+
+function getInsumosSourceProducts() {
+  return state.products.filter((product) => product.section === "Insumos");
+}
+
+function renderInsumosFilterPanel() {
+  const products = getInsumosSourceProducts();
+  const brands = uniqueSorted(products.map((p) => p.brand));
+  const materials = uniqueSorted(products.map((p) => p.material));
+  const types = uniqueSorted(products.map((p) => normalizeInsumoType(p.insumoType || p.category)));
+
+  syncFilterSelectionsWithOptions(brands, materials, types);
+  renderCheckboxGroup(el.insumosBrandFilters, "brand", brands, state.insumosFilters.brands);
+  renderCheckboxGroup(el.insumosMaterialFilters, "material", materials, state.insumosFilters.materials);
+  renderCheckboxGroup(el.insumosTypeFilters, "type", types, state.insumosFilters.types);
+
+  el.insumosSearch.value = state.insumosFilters.query;
+  el.insumosSort.value = state.insumosFilters.sort;
+}
+
+function syncFilterSelectionsWithOptions(brands, materials, types) {
+  state.insumosFilters.brands = state.insumosFilters.brands.filter((value) => brands.includes(value));
+  state.insumosFilters.materials = state.insumosFilters.materials.filter((value) =>
+    materials.includes(value)
+  );
+  state.insumosFilters.types = state.insumosFilters.types.filter((value) => types.includes(value));
+}
+
+function renderCheckboxGroup(container, filterType, options, selectedValues) {
+  container.innerHTML = "";
+
+  if (!options.length) {
+    container.innerHTML = '<p class="empty">Sin opciones</p>';
+    return;
+  }
+
+  options.forEach((value) => {
+    const label = document.createElement("label");
+    label.className = "insumo-check";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.dataset.filterType = filterType;
+    input.value = value;
+    input.checked = selectedValues.includes(value);
+
+    const text = document.createElement("span");
+    text.textContent = value;
+
+    label.appendChild(input);
+    label.appendChild(text);
+    container.appendChild(label);
+  });
+}
+
+function handleInsumosCheckboxFilters() {
+  state.insumosFilters.brands = getCheckedValues(el.insumosBrandFilters);
+  state.insumosFilters.materials = getCheckedValues(el.insumosMaterialFilters);
+  state.insumosFilters.types = getCheckedValues(el.insumosTypeFilters);
+  renderProducts();
+}
+
+function getCheckedValues(container) {
+  return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map((input) =>
+    String(input.value || "").trim()
+  );
+}
+
+function getFilteredInsumosProducts() {
+  const query = state.insumosFilters.query.toLowerCase();
+  const byText = getInsumosSourceProducts().filter((product) => {
+    if (!query) {
+      return true;
+    }
+
+    const text = [product.name, product.description, product.brand, product.material, product.insumoType]
+      .join(" ")
+      .toLowerCase();
+    return text.includes(query);
+  });
+
+  const byBrand =
+    state.insumosFilters.brands.length > 0
+      ? byText.filter((product) => state.insumosFilters.brands.includes(product.brand))
+      : byText;
+
+  const byMaterial =
+    state.insumosFilters.materials.length > 0
+      ? byBrand.filter((product) => state.insumosFilters.materials.includes(product.material))
+      : byBrand;
+
+  const byType =
+    state.insumosFilters.types.length > 0
+      ? byMaterial.filter((product) =>
+          state.insumosFilters.types.includes(normalizeInsumoType(product.insumoType || product.category))
+        )
+      : byMaterial;
+
+  return sortInsumosProducts(byType, state.insumosFilters.sort);
+}
+
+function sortInsumosProducts(products, sortKey) {
+  const sorted = [...products];
+
+  if (sortKey === "precio-asc") {
+    sorted.sort((a, b) => a.price - b.price);
+    return sorted;
+  }
+
+  if (sortKey === "precio-desc") {
+    sorted.sort((a, b) => b.price - a.price);
+    return sorted;
+  }
+
+  sorted.sort((a, b) => a.name.localeCompare(b.name, "es"));
+  return sorted;
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, "es")
+  );
 }
 
 function renderCart() {
@@ -1248,36 +1517,27 @@ function formatCategory(category) {
 
 function normalizeSection(section) {
   const clean = String(section || "").trim().toLowerCase();
-  if (clean === "llaveros") {
-    return "Llaveros";
-  }
-  if (clean === "jarras") {
-    return "Jarras";
-  }
-  if (clean === "hogar") {
-    return "Hogar";
-  }
-  if (clean === "soportes") {
-    return "Soportes";
-  }
 
-  // Mapeo de secciones viejas a la nueva estructura.
   if (clean === "productos") {
-    return "Hogar";
+    return "Productos";
   }
   if (clean === "insumos") {
-    return "Soportes";
+    return "Insumos";
   }
   if (clean === "impresoras") {
-    return "Soportes";
+    return "Productos";
   }
 
-  return "Hogar";
+  if (PRODUCT_SUBSECTIONS.some((option) => option.toLowerCase() === clean)) {
+    return "Productos";
+  }
+
+  return "Productos";
 }
 
 function getSubsectionsBySection(section) {
   const normalizedSection = normalizeSection(section);
-  const options = SECTION_SUBSECTIONS[normalizedSection];
+  const options = SECTION_SUBSECTIONS[normalizedSection] || [];
   if (!Array.isArray(options)) {
     return [];
   }
@@ -1293,7 +1553,7 @@ function populateAdminSubsections(section, preferredSubsection = "") {
 
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Selecciona una subseccion";
+  placeholder.textContent = "Selecciona una opcion";
   placeholder.disabled = true;
   placeholder.selected = true;
   el.productCategory.appendChild(placeholder);
@@ -1315,6 +1575,28 @@ function populateAdminSubsections(section, preferredSubsection = "") {
   }
 }
 
+function toggleInsumoExtraFields(show) {
+  el.insumoExtraFields.classList.toggle("show", show);
+  el.insumoBrand.required = false;
+  el.insumoMaterial.required = false;
+  el.insumoType.required = false;
+
+  if (!show) {
+    el.insumoBrand.value = "";
+    el.insumoMaterial.value = "";
+    el.insumoType.value = "";
+  }
+}
+
+function toggleJarraExtraFields(show) {
+  el.jarraExtraFields.classList.toggle("show", show);
+  el.jarraSize.required = false;
+
+  if (!show) {
+    el.jarraSize.value = "500ml";
+  }
+}
+
 function normalizeSubsection(section, subsection) {
   const options = getSubsectionsBySection(section);
   const clean = String(subsection || "").trim().toLowerCase();
@@ -1322,15 +1604,65 @@ function normalizeSubsection(section, subsection) {
   if (match) {
     return match;
   }
-  return formatCategory(subsection);
+
+  if (normalizeSection(section) === "Insumos") {
+    return normalizeInsumoType(subsection);
+  }
+
+  if (PRODUCT_SUBSECTIONS.some((option) => option.toLowerCase() === clean)) {
+    return PRODUCT_SUBSECTIONS.find((option) => option.toLowerCase() === clean) || PRODUCT_SUBSECTIONS[0];
+  }
+
+  return PRODUCT_SUBSECTIONS[0];
+}
+
+function normalizeInsumoType(value) {
+  const clean = String(value || "").trim().toLowerCase();
+  const match = INSUMO_SUBSECTIONS.find((option) => option.toLowerCase() === clean);
+  return match || "Filamento";
+}
+
+function normalizeJarraSize(value) {
+  const clean = String(value || "").trim().toLowerCase();
+  if (clean === "500ml" || clean === "500 ml" || clean === "0.5l" || clean === "medio litro") {
+    return "500ml";
+  }
+  if (clean === "1 litro" || clean === "1l" || clean === "1000ml" || clean === "1 litro") {
+    return "1 litro";
+  }
+  return "500ml";
 }
 
 function normalizeProduct(product) {
-  const normalizedSection = normalizeSection(product.section);
+  const rawSection = String(product.section || "").trim();
+  const rawCategory = String(product.category || "").trim();
+  const normalizedSection = normalizeSection(rawSection);
+  const isLegacyProductSubsection = PRODUCT_SUBSECTIONS.includes(formatCategory(rawSection));
+
+  const rawCategoryLower = rawCategory.toLowerCase();
+  const legacyJarraSizeCategory =
+    rawCategoryLower.includes("500") || rawCategoryLower.includes("1 litro") || rawCategoryLower.includes("1l");
+
+  const normalizedCategory = isLegacyProductSubsection
+    ? formatCategory(rawSection)
+    : rawSection.trim().toLowerCase() === "jarras" || legacyJarraSizeCategory
+      ? "Jarras"
+    : normalizeSubsection(normalizedSection, product.category);
+
   return {
     ...product,
     section: normalizedSection,
-    category: normalizeSubsection(normalizedSection, product.category),
+    category: normalizedCategory,
+    jarraSize:
+      normalizedSection === "Productos" && normalizedCategory === "Jarras"
+        ? normalizeJarraSize(product.jarraSize || rawCategory)
+        : "",
+    brand: String(product.brand || "").trim(),
+    material: String(product.material || "").trim(),
+    insumoType:
+      normalizedSection === "Insumos"
+        ? normalizeInsumoType(product.insumoType || product.category)
+        : "",
   };
 }
 
