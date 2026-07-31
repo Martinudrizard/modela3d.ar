@@ -14,14 +14,14 @@ const CLOUD_KEYS = {
 };
 const CLOUD_PRODUCT_MUTATION_KEY = "__products_mutation";
 
-const CLOUD_TIMEOUT_MS = 45000;
+const CLOUD_TIMEOUT_MS = 90000;
 const HERO_MAX_IMAGES = 6;
 
 const IMAGE_UPLOAD_CONFIG = {
   product: {
-    maxWidth: 1400,
-    maxHeight: 1400,
-    quality: 0.82,
+    maxWidth: 1200,
+    maxHeight: 1200,
+    quality: 0.72,
   },
   hero: {
     maxWidth: 1200,
@@ -930,34 +930,44 @@ async function syncProductMutationToCloud(data) {
     return false;
   }
 
-  try {
-    const response = await fetchWithTimeout(
-      CLOUD_ENDPOINT,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Admin-Key": state.adminKey,
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(
+        CLOUD_ENDPOINT,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Admin-Key": state.adminKey,
+          },
+          body: JSON.stringify({ key: CLOUD_PRODUCT_MUTATION_KEY, data }),
         },
-        body: JSON.stringify({ key: CLOUD_PRODUCT_MUTATION_KEY, data }),
-      },
-      CLOUD_TIMEOUT_MS
-    );
+        CLOUD_TIMEOUT_MS
+      );
 
-    const ok = response.ok;
-    if (!ok) {
+      if (response.ok) {
+        return true;
+      }
+
       if (response.status === 401) {
         clearAdminSession();
         showAdminAccessRequired();
         return false;
       }
-      showCloudSyncWarning();
+
+      if (response.status === 400 || response.status === 404 || response.status === 405) {
+        const legacyOk = await syncStateToCloud(CLOUD_KEYS.products, state.products);
+        if (legacyOk) {
+          return true;
+        }
+      }
+    } catch {
+      // Reintenta una vez ante fallos transitorios de red.
     }
-    return ok;
-  } catch {
-    showCloudSyncWarning();
-    return false;
   }
+
+  showCloudSyncWarning();
+  return false;
 }
 
 function ensureAdminAccess() {
