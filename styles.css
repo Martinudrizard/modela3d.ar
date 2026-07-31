@@ -685,6 +685,24 @@ small {
   color: var(--muted);
 }
 
+.paste-target {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px dashed #c9c9c9;
+  border-radius: 10px;
+  background: #fafafa;
+  color: #5f5f5f;
+  font-size: 0.84rem;
+  text-align: center;
+  cursor: text;
+}
+
+.paste-target:focus {
+  outline: 2px solid rgba(207, 20, 28, 0.2);
+  border-color: #cf141c;
+  background: #fff;
+}
+
 .image-preview-grid {
   margin-top: 8px;
   display: grid;

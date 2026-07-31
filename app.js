@@ -148,6 +148,7 @@ const state = {
   heroSlideIndex: 0,
   heroTimerId: null,
   pendingProductFiles: [],
+  pendingHeroFiles: [],
   editingProductId: "",
   waNumber: localStorage.getItem(STORAGE_KEYS.waNumber) || "",
   adminKey: sessionStorage.getItem(STORAGE_KEYS.adminSessionKey) || "",
@@ -209,12 +210,14 @@ const el = {
   insumoMaterial: document.getElementById("insumo-material"),
   insumoType: document.getElementById("insumo-type"),
   productImagesInput: document.getElementById("product-images"),
+  productPasteTarget: document.getElementById("product-paste-target"),
   productImagePreview: document.getElementById("product-image-preview"),
   productImageCount: document.getElementById("product-image-count"),
   clearProductImagesBtn: document.getElementById("clear-product-images"),
   publishProductBtn: document.getElementById("publish-product-btn"),
   cancelEditProductBtn: document.getElementById("cancel-edit-product"),
   heroImagesInput: document.getElementById("hero-images"),
+  heroPasteTarget: document.getElementById("hero-paste-target"),
   heroImagePreview: document.getElementById("hero-image-preview"),
   saveHeroImagesBtn: document.getElementById("save-hero-images"),
   syncUploadBtn: document.getElementById("sync-upload"),
@@ -344,17 +347,12 @@ function bindEvents() {
   el.insumosTypeFilters.addEventListener("change", handleInsumosCheckboxFilters);
 
   el.productImagesInput.addEventListener("change", () => {
-    const selected = Array.from(el.productImagesInput.files || []);
-    if (!selected.length) {
-      return;
-    }
-
-    state.pendingProductFiles = mergeUniqueFiles(state.pendingProductFiles, selected);
-    renderLocalImagePreview(state.pendingProductFiles, el.productImagePreview);
-    renderProductImageCount();
-
-    // Permite volver a abrir el selector y sumar mas imagenes.
+    addProductFiles(Array.from(el.productImagesInput.files || []));
     el.productImagesInput.value = "";
+  });
+
+  el.productPasteTarget.addEventListener("paste", (event) => {
+    handlePasteUpload(event, "product");
   });
 
   el.clearProductImagesBtn.addEventListener("click", () => {
@@ -369,7 +367,12 @@ function bindEvents() {
   });
 
   el.heroImagesInput.addEventListener("change", () => {
-    renderLocalImagePreview(el.heroImagesInput.files, el.heroImagePreview);
+    addHeroFiles(Array.from(el.heroImagesInput.files || []));
+    el.heroImagesInput.value = "";
+  });
+
+  el.heroPasteTarget.addEventListener("paste", (event) => {
+    handlePasteUpload(event, "hero");
   });
 
   el.saveWaBtn.addEventListener("click", async () => {
@@ -493,7 +496,7 @@ function bindEvents() {
       return;
     }
 
-    const files = Array.from(el.heroImagesInput.files || []);
+    const files = [...state.pendingHeroFiles];
     if (!files.length) {
       alert("Subi al menos una imagen para el carrusel.");
       return;
@@ -534,6 +537,7 @@ function bindEvents() {
 
       renderHeroCarousel();
       startHeroAutoplay();
+      state.pendingHeroFiles = [];
       el.heroImagesInput.value = "";
       el.heroImagePreview.innerHTML = "";
       alert("Carrusel actualizado.");
@@ -1834,6 +1838,60 @@ function renderImagePreviewFromUrls(images, container) {
 function renderProductImageCount() {
   const total = state.pendingProductFiles.length;
   el.productImageCount.textContent = `${total} foto(s) seleccionada(s)`;
+}
+
+function addProductFiles(files) {
+  if (!Array.isArray(files) || !files.length) {
+    return;
+  }
+
+  state.pendingProductFiles = mergeUniqueFiles(state.pendingProductFiles, files);
+  renderLocalImagePreview(state.pendingProductFiles, el.productImagePreview);
+  renderProductImageCount();
+}
+
+function addHeroFiles(files) {
+  if (!Array.isArray(files) || !files.length) {
+    return;
+  }
+
+  state.pendingHeroFiles = mergeUniqueFiles(state.pendingHeroFiles, files);
+  renderLocalImagePreview(state.pendingHeroFiles, el.heroImagePreview);
+}
+
+function handlePasteUpload(event, targetType) {
+  const files = extractClipboardImageFiles(event.clipboardData);
+  if (!files.length) {
+    return;
+  }
+
+  event.preventDefault();
+
+  if (targetType === "hero") {
+    addHeroFiles(files);
+    return;
+  }
+
+  addProductFiles(files);
+}
+
+function extractClipboardImageFiles(clipboardData) {
+  if (!clipboardData?.items) {
+    return [];
+  }
+
+  return Array.from(clipboardData.items)
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item, index) => {
+      const file = item.getAsFile();
+      if (!file) {
+        return null;
+      }
+
+      const extension = file.type.split("/")[1] || "png";
+      return new File([file], `pegada_${Date.now()}_${index}.${extension}`, { type: file.type });
+    })
+    .filter(Boolean);
 }
 
 function setHeroSubmitLoading(isLoading) {

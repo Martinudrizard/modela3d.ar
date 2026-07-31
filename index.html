@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260730d" />
+    <link rel="stylesheet" href="styles.css?v=20260730e" />
   </head>
   <body>
     <div class="bg-shape bg-shape-a"></div>
@@ -226,8 +226,11 @@
                 accept="image/*"
                 multiple
               />
+              <div id="product-paste-target" class="paste-target" tabindex="0" role="button" aria-label="Pegar fotos desde el portapapeles">
+                Hace clic aca y pega con Ctrl+V una captura o imagen copiada
+              </div>
               <small>
-                Podes agregar fotos en varias tandas antes de publicar.
+                Podes agregar fotos en varias tandas antes de publicar, o pegar un recorte copiado desde la PC.
               </small>
               <p id="product-image-count" class="upload-count">0 fotos seleccionadas</p>
               <button id="clear-product-images" class="btn-ghost" type="button">
@@ -244,6 +247,9 @@
             <h3>Carrusel principal</h3>
             <label for="hero-images">Subi varias fotos destacadas</label>
             <input id="hero-images" type="file" accept="image/*" multiple />
+            <div id="hero-paste-target" class="paste-target" tabindex="0" role="button" aria-label="Pegar imagenes del carrusel desde el portapapeles">
+              Hace clic aca y pega con Ctrl+V imagenes para el carrusel
+            </div>
             <div id="hero-image-preview" class="image-preview-grid"></div>
             <button id="save-hero-images" class="btn-primary" type="button">
               Guardar carrusel
@@ -318,6 +324,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=20260730d"></script>
+    <script src="app.js?v=20260730e"></script>
   </body>
 </html>
