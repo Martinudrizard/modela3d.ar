@@ -155,7 +155,6 @@ const state = {
   logoTapCount: 0,
   logoTapTimerId: null,
   cloudWarningShown: false,
-  localProductsPersistWarningShown: false,
 };
 
 const el = {
@@ -464,6 +463,7 @@ function bindEvents() {
       state.activeSection = section;
       state.activeCategory = product.category;
       state.activeJarraSize = product.category === "Jarras" ? product.jarraSize || "Todas" : "Todas";
+      const previousProducts = [...state.products];
 
       if (editingProduct) {
         state.products = state.products.map((item) => (item.id === editingProduct.id ? product : item));
@@ -471,14 +471,15 @@ function bindEvents() {
         state.products.unshift(product);
       }
 
-      const savedLocally = persistProducts();
-
-      await syncStateToCloud(CLOUD_KEYS.products, state.products);
-
-      if (!savedLocally && !state.localProductsPersistWarningShown) {
-        state.localProductsPersistWarningShown = true;
-        alert("El navegador se quedo sin espacio local para guardar fotos, pero el producto se publico igual en la nube.");
+      const cloudSaved = await syncStateToCloud(CLOUD_KEYS.products, state.products);
+      if (!cloudSaved) {
+        state.products = previousProducts;
+        renderAll();
+        alert("No se pudo guardar el producto en la base de datos. Revisa la conexion e intenta de nuevo.");
+        return;
       }
+
+      persistProducts();
 
       resetProductForm();
       renderAll();
@@ -571,19 +572,27 @@ function bindEvents() {
     alert("Datos actualizados desde la nube.");
   });
 
-  el.resetDemoBtn.addEventListener("click", () => {
+  el.resetDemoBtn.addEventListener("click", async () => {
     const accepted = confirm("Esto reemplazara tus productos actuales por productos demo. Deseas continuar?");
     if (!accepted) {
       return;
     }
 
+    const previousProducts = [...state.products];
     state.products = [...DEMO_PRODUCTS.map((product) => ({ ...product, id: createId() }))];
+    const cloudSaved = await syncStateToCloud(CLOUD_KEYS.products, state.products);
+    if (!cloudSaved) {
+      state.products = previousProducts;
+      renderAll();
+      alert("No se pudo restaurar demo en la base de datos.");
+      return;
+    }
+
     persistProducts();
-    void syncStateToCloud(CLOUD_KEYS.products, state.products);
     renderAll();
   });
 
-  el.adminProductList.addEventListener("click", (event) => {
+  el.adminProductList.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
       return;
@@ -594,8 +603,8 @@ function bindEvents() {
       if (state.editingProductId && state.editingProductId === productId) {
         resetProductForm();
       }
+      const previousProducts = [...state.products];
       state.products = state.products.filter((product) => product.id !== productId);
-      persistProducts();
 
       // Limpia productos borrados del carrito para evitar referencias invalidas.
       Object.keys(state.cart).forEach((id) => {
@@ -604,8 +613,16 @@ function bindEvents() {
         }
       });
 
+      const cloudSaved = await syncStateToCloud(CLOUD_KEYS.products, state.products);
+      if (!cloudSaved) {
+        state.products = previousProducts;
+        renderAll();
+        alert("No se pudo eliminar en la base de datos. Intenta nuevamente.");
+        return;
+      }
+
+      persistProducts();
       persistCart();
-      void syncStateToCloud(CLOUD_KEYS.products, state.products);
       renderAll();
       return;
     }
@@ -1497,7 +1514,8 @@ function persistProducts() {
   return safeSetStorage(
     STORAGE_KEYS.products,
     JSON.stringify(state.products),
-    "No hay espacio local suficiente para guardar mas fotos en este dispositivo."
+    "",
+    false
   );
 }
 
@@ -1513,12 +1531,14 @@ function persistHeroSlides() {
   );
 }
 
-function safeSetStorage(key, value, errorMessage = "No se pudieron guardar datos en este dispositivo.") {
+function safeSetStorage(key, value, errorMessage = "No se pudieron guardar datos en este dispositivo.", showAlert = true) {
   try {
     localStorage.setItem(key, value);
     return true;
   } catch {
-    alert(errorMessage);
+    if (showAlert && errorMessage) {
+      alert(errorMessage);
+    }
     return false;
   }
 }
