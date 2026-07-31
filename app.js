@@ -155,6 +155,7 @@ const state = {
   logoTapCount: 0,
   logoTapTimerId: null,
   cloudWarningShown: false,
+  localProductsPersistWarningShown: false,
 };
 
 const el = {
@@ -470,11 +471,14 @@ function bindEvents() {
         state.products.unshift(product);
       }
 
-      if (!persistProducts()) {
-        return;
-      }
+      const savedLocally = persistProducts();
 
       await syncStateToCloud(CLOUD_KEYS.products, state.products);
+
+      if (!savedLocally && !state.localProductsPersistWarningShown) {
+        state.localProductsPersistWarningShown = true;
+        alert("El navegador se quedo sin espacio local para guardar fotos, pero el producto se publico igual en la nube.");
+      }
 
       resetProductForm();
       renderAll();
@@ -1493,7 +1497,7 @@ function persistProducts() {
   return safeSetStorage(
     STORAGE_KEYS.products,
     JSON.stringify(state.products),
-    "No se pudieron guardar los productos. Prueba con menos fotos o fotos mas livianas."
+    "No hay espacio local suficiente para guardar mas fotos en este dispositivo."
   );
 }
 
