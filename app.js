@@ -29,14 +29,16 @@ const IMAGE_UPLOAD_CONFIG = {
   },
 };
 
-const SHOP_SECTIONS = ["Productos", "Insumos"];
+const SHOP_SECTIONS = ["Productos", "Insumos", "Impresoras 3D"];
 const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes"];
 const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
+const IMPRESORAS_SUBSECTIONS = ["FDM", "Resina", "Profesional"];
 const JARRA_SIZES = ["500ml", "1 litro"];
 
 const SECTION_SUBSECTIONS = {
   Productos: PRODUCT_SUBSECTIONS,
   Insumos: INSUMO_SUBSECTIONS,
+  "Impresoras 3D": IMPRESORAS_SUBSECTIONS,
 };
 
 const DEMO_PRODUCTS = [
@@ -114,6 +116,17 @@ const DEMO_PRODUCTS = [
       "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80",
     ],
   },
+  {
+    id: createId(),
+    name: "Impresora 3D FDM Pro 220",
+    section: "Impresoras 3D",
+    category: "FDM",
+    description: "Impresora 3D lista para taller con volumen 220x220x250 mm.",
+    price: 489000,
+    images: [
+      "https://images.unsplash.com/photo-1581091215367-59ab6dcefef0?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
 ];
 
 const state = {
@@ -154,6 +167,7 @@ const el = {
   },
   sectionChips: document.getElementById("section-chips"),
   productSubsectionFilter: document.getElementById("product-subsection-filter"),
+  productSubsectionTitle: document.getElementById("product-subsection-title"),
   productSubsectionChips: document.getElementById("product-subsection-chips"),
   jarraSizeFilter: document.getElementById("jarra-size-filter"),
   jarraSizeChips: document.getElementById("jarra-size-chips"),
@@ -969,7 +983,8 @@ function renderSectionChips() {
 
     button.addEventListener("click", () => {
       state.activeSection = section;
-      state.activeCategory = section === "Productos" ? PRODUCT_SUBSECTIONS[0] : "Todas";
+      const subsectionOptions = getSubsectionsBySection(section);
+      state.activeCategory = section === "Insumos" ? "Todas" : subsectionOptions[0] || "Todas";
       state.activeJarraSize = "Todas";
       renderSectionChips();
       renderProductSubsectionChips();
@@ -984,19 +999,22 @@ function renderSectionChips() {
 }
 
 function renderProductSubsectionChips() {
-  const isProducts = state.activeSection === "Productos";
-  el.productSubsectionFilter.classList.toggle("hidden-block", !isProducts);
+  const isCategorySection = state.activeSection !== "Insumos";
+  el.productSubsectionFilter.classList.toggle("hidden-block", !isCategorySection);
 
-  if (!isProducts) {
+  if (!isCategorySection) {
     return;
   }
 
-  if (!PRODUCT_SUBSECTIONS.includes(state.activeCategory)) {
-    state.activeCategory = PRODUCT_SUBSECTIONS[0];
+  el.productSubsectionTitle.textContent = state.activeSection;
+  const subsectionOptions = getSubsectionsBySection(state.activeSection);
+
+  if (!subsectionOptions.includes(state.activeCategory)) {
+    state.activeCategory = subsectionOptions[0] || "Todas";
   }
 
   el.productSubsectionChips.innerHTML = "";
-  PRODUCT_SUBSECTIONS.forEach((subsection) => {
+  subsectionOptions.forEach((subsection) => {
     const button = document.createElement("button");
     button.className = "chip";
     button.textContent = subsection;
@@ -1041,23 +1059,23 @@ function renderJarraSizeChips() {
 }
 
 function updateCatalogVisibility() {
-  const isProducts = state.activeSection === "Productos";
-  el.productsSections.classList.toggle("hidden-block", !isProducts);
-  el.insumosShell.classList.toggle("hidden-block", isProducts);
+  const isInsumos = state.activeSection === "Insumos";
+  el.productsSections.classList.toggle("hidden-block", isInsumos);
+  el.insumosShell.classList.toggle("hidden-block", !isInsumos);
 }
 
 function renderProducts() {
-  if (state.activeSection === "Productos") {
-    renderProductCatalog();
+  if (state.activeSection === "Insumos") {
+    renderInsumosCatalog();
     return;
   }
 
-  renderInsumosCatalog();
+  renderProductCatalog();
 }
 
 function renderProductCatalog() {
   let sourceProducts = state.products.filter(
-    (product) => product.section === "Productos" && product.category === state.activeCategory
+    (product) => product.section === state.activeSection && product.category === state.activeCategory
   );
 
   if (state.activeCategory === "Jarras" && state.activeJarraSize !== "Todas") {
@@ -1560,12 +1578,16 @@ function normalizeSection(section) {
   if (clean === "insumos") {
     return "Insumos";
   }
-  if (clean === "impresoras") {
-    return "Productos";
+  if (clean === "impresoras" || clean === "impresoras 3d" || clean === "impresora 3d") {
+    return "Impresoras 3D";
   }
 
   if (PRODUCT_SUBSECTIONS.some((option) => option.toLowerCase() === clean)) {
     return "Productos";
+  }
+
+  if (IMPRESORAS_SUBSECTIONS.some((option) => option.toLowerCase() === clean)) {
+    return "Impresoras 3D";
   }
 
   return "Productos";
@@ -1634,6 +1656,7 @@ function toggleJarraExtraFields(show) {
 }
 
 function normalizeSubsection(section, subsection) {
+  const normalizedSection = normalizeSection(section);
   const options = getSubsectionsBySection(section);
   const clean = String(subsection || "").trim().toLowerCase();
   const match = options.find((option) => option.toLowerCase() === clean);
@@ -1641,15 +1664,15 @@ function normalizeSubsection(section, subsection) {
     return match;
   }
 
-  if (normalizeSection(section) === "Insumos") {
+  if (normalizedSection === "Insumos") {
     return normalizeInsumoType(subsection);
   }
 
-  if (PRODUCT_SUBSECTIONS.some((option) => option.toLowerCase() === clean)) {
-    return PRODUCT_SUBSECTIONS.find((option) => option.toLowerCase() === clean) || PRODUCT_SUBSECTIONS[0];
+  if (options.length > 0) {
+    return options[0];
   }
 
-  return PRODUCT_SUBSECTIONS[0];
+  return formatCategory(subsection);
 }
 
 function normalizeInsumoType(value) {
@@ -1674,6 +1697,7 @@ function normalizeProduct(product) {
   const rawCategory = String(product.category || "").trim();
   const normalizedSection = normalizeSection(rawSection);
   const isLegacyProductSubsection = PRODUCT_SUBSECTIONS.includes(formatCategory(rawSection));
+  const isLegacyPrinterSubsection = IMPRESORAS_SUBSECTIONS.includes(formatCategory(rawSection));
 
   const rawCategoryLower = rawCategory.toLowerCase();
   const legacyJarraSizeCategory =
@@ -1681,6 +1705,8 @@ function normalizeProduct(product) {
 
   const normalizedCategory = isLegacyProductSubsection
     ? formatCategory(rawSection)
+    : isLegacyPrinterSubsection
+      ? formatCategory(rawSection)
     : rawSection.trim().toLowerCase() === "jarras" || legacyJarraSizeCategory
       ? "Jarras"
     : normalizeSubsection(normalizedSection, product.category);
