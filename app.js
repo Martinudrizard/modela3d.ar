@@ -12,6 +12,7 @@ const CLOUD_KEYS = {
   heroSlides: "heroSlides",
   waNumber: "waNumber",
 };
+const CLOUD_PRODUCT_MUTATION_KEY = "__products_mutation";
 
 const CLOUD_TIMEOUT_MS = 45000;
 const HERO_MAX_IMAGES = 6;
@@ -471,7 +472,7 @@ function bindEvents() {
         state.products.unshift(product);
       }
 
-      const cloudSaved = await syncStateToCloud(CLOUD_KEYS.products, state.products);
+      const cloudSaved = await upsertProductInCloud(product);
       if (!cloudSaved) {
         state.products = previousProducts;
         renderAll();
@@ -554,7 +555,7 @@ function bindEvents() {
     }
 
     const [productsOk, heroOk, waOk] = await Promise.all([
-      syncStateToCloud(CLOUD_KEYS.products, state.products),
+      replaceProductsInCloud(state.products),
       syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides),
       syncStateToCloud(CLOUD_KEYS.waNumber, state.waNumber),
     ]);
@@ -580,7 +581,7 @@ function bindEvents() {
 
     const previousProducts = [...state.products];
     state.products = [...DEMO_PRODUCTS.map((product) => ({ ...product, id: createId() }))];
-    const cloudSaved = await syncStateToCloud(CLOUD_KEYS.products, state.products);
+    const cloudSaved = await replaceProductsInCloud(state.products);
     if (!cloudSaved) {
       state.products = previousProducts;
       renderAll();
@@ -613,7 +614,7 @@ function bindEvents() {
         }
       });
 
-      const cloudSaved = await syncStateToCloud(CLOUD_KEYS.products, state.products);
+      const cloudSaved = await deleteProductInCloud(productId);
       if (!cloudSaved) {
         state.products = previousProducts;
         renderAll();
@@ -865,6 +866,83 @@ async function syncStateToCloud(key, data) {
       },
       body: JSON.stringify({ key, data }),
     }, CLOUD_TIMEOUT_MS);
+
+    const ok = response.ok;
+    if (!ok) {
+      if (response.status === 401) {
+        clearAdminSession();
+        showAdminAccessRequired();
+        return false;
+      }
+      showCloudSyncWarning();
+    }
+    return ok;
+  } catch {
+    showCloudSyncWarning();
+    return false;
+  }
+}
+
+async function upsertProductInCloud(product) {
+  return syncProductMutationToCloud({
+    action: "upsert",
+    product,
+  });
+}
+
+async function deleteProductInCloud(productId) {
+  return syncProductMutationToCloud({
+    action: "delete",
+    productId,
+  });
+}
+
+async function replaceProductsInCloud(products) {
+  const safeProducts = Array.isArray(products) ? products : [];
+  const ids = safeProducts.map((product) => String(product.id || "").trim()).filter(Boolean);
+
+  const setIdsOk = await syncProductMutationToCloud({
+    action: "set-ids",
+    productIds: ids,
+  });
+
+  if (!setIdsOk) {
+    return false;
+  }
+
+  for (const product of safeProducts) {
+    const ok = await upsertProductInCloud(product);
+    if (!ok) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function syncProductMutationToCloud(data) {
+  if (isLocalFileMode()) {
+    return false;
+  }
+
+  if (!state.adminKey) {
+    showAdminAccessRequired();
+    return false;
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      CLOUD_ENDPOINT,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Key": state.adminKey,
+        },
+        body: JSON.stringify({ key: CLOUD_PRODUCT_MUTATION_KEY, data }),
+      },
+      CLOUD_TIMEOUT_MS
+    );
 
     const ok = response.ok;
     if (!ok) {

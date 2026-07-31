@@ -1,6 +1,9 @@
 const { getStore } = require("@netlify/blobs");
 
 const ALLOWED_KEYS = new Set(["products", "heroSlides", "waNumber"]);
+const PRODUCT_MUTATION_KEY = "__products_mutation";
+const PRODUCTS_IDS_KEY = "products_ids_v2";
+const PRODUCT_KEY_PREFIX = "product_v2:";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +37,13 @@ exports.handler = async (event, context) => {
         return response(400, { ok: false, error: "Invalid key" });
       }
 
+      if (key === "products") {
+        const productsV2 = await readProductsV2(store);
+        if (productsV2.ok && productsV2.data) {
+          return response(200, { ok: true, data: productsV2.data });
+        }
+      }
+
       const raw = await store.get(key);
       const data = raw ? safeJsonParse(raw).value : null;
       return response(200, { ok: true, data });
@@ -54,8 +64,21 @@ exports.handler = async (event, context) => {
         return response(200, { ok: true });
       }
 
+      if (key === PRODUCT_MUTATION_KEY) {
+        const applied = await applyProductMutation(store, data);
+        if (!applied.ok) {
+          return response(400, { ok: false, error: applied.error });
+        }
+        return response(200, { ok: true });
+      }
+
       if (!ALLOWED_KEYS.has(key)) {
         return response(400, { ok: false, error: "Invalid key" });
+      }
+
+      if (key === "products") {
+        const productsArray = Array.isArray(data) ? data : [];
+        await writeProductsV2(store, productsArray);
       }
 
       await store.set(key, JSON.stringify(data));
@@ -81,6 +104,103 @@ function response(statusCode, payload) {
     },
     body: JSON.stringify(payload),
   };
+}
+
+async function applyProductMutation(store, payload) {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, error: "Invalid mutation payload" };
+  }
+
+  const action = String(payload.action || "").trim().toLowerCase();
+
+  if (action === "upsert") {
+    const product = payload.product;
+    if (!product || typeof product !== "object") {
+      return { ok: false, error: "Missing product" };
+    }
+
+    const productId = String(product.id || "").trim();
+    if (!productId) {
+      return { ok: false, error: "Missing product id" };
+    }
+
+    const ids = await readProductIds(store);
+    const nextIds = ids.includes(productId) ? ids : [...ids, productId];
+    await writeProductIds(store, nextIds);
+    await store.set(`${PRODUCT_KEY_PREFIX}${productId}`, JSON.stringify(product));
+    return { ok: true };
+  }
+
+  if (action === "delete") {
+    const productId = String(payload.productId || "").trim();
+    if (!productId) {
+      return { ok: false, error: "Missing product id" };
+    }
+
+    const ids = await readProductIds(store);
+    const nextIds = ids.filter((id) => id !== productId);
+    await writeProductIds(store, nextIds);
+    return { ok: true };
+  }
+
+  if (action === "set-ids") {
+    const productIds = Array.isArray(payload.productIds) ? payload.productIds : [];
+    const normalizedIds = [...new Set(productIds.map((id) => String(id || "").trim()).filter(Boolean))];
+    await writeProductIds(store, normalizedIds);
+    return { ok: true };
+  }
+
+  return { ok: false, error: "Unsupported mutation action" };
+}
+
+async function readProductsV2(store) {
+  const ids = await readProductIds(store);
+  if (!ids.length) {
+    return { ok: true, data: null };
+  }
+
+  const rows = await Promise.all(ids.map((id) => store.get(`${PRODUCT_KEY_PREFIX}${id}`)));
+  const products = rows
+    .map((raw) => (raw ? safeJsonParse(raw).value : null))
+    .filter((item) => item && typeof item === "object");
+
+  return { ok: true, data: products };
+}
+
+async function writeProductsV2(store, products) {
+  const safeProducts = Array.isArray(products) ? products : [];
+  const ids = [];
+
+  for (const product of safeProducts) {
+    if (!product || typeof product !== "object") {
+      continue;
+    }
+
+    const productId = String(product.id || "").trim();
+    if (!productId) {
+      continue;
+    }
+
+    ids.push(productId);
+    await store.set(`${PRODUCT_KEY_PREFIX}${productId}`, JSON.stringify(product));
+  }
+
+  await writeProductIds(store, [...new Set(ids)]);
+}
+
+async function readProductIds(store) {
+  const raw = await store.get(PRODUCTS_IDS_KEY);
+  const parsed = raw ? safeJsonParse(raw).value : null;
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return [...new Set(parsed.map((id) => String(id || "").trim()).filter(Boolean))];
+}
+
+async function writeProductIds(store, ids) {
+  const normalizedIds = [...new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || "").trim()).filter(Boolean))];
+  await store.set(PRODUCTS_IDS_KEY, JSON.stringify(normalizedIds));
 }
 
 function safeJsonParse(text) {
