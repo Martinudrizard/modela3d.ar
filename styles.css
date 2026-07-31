@@ -862,20 +862,23 @@ button:disabled {
   }
 
   .cart-panel {
-    transform: translateY(calc(100% + 12px));
+    transform: translateY(calc(100% + 24px));
     top: auto;
     bottom: 62px;
     right: 12px;
     left: 12px;
     width: auto;
     max-height: 65vh;
-    opacity: 1;
+    opacity: 0;
+    visibility: hidden;
     transition: transform 240ms ease;
     pointer-events: none;
   }
 
   .cart-panel.open {
     transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
     pointer-events: auto;
   }
 
