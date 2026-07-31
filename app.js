@@ -29,20 +29,21 @@ const IMAGE_UPLOAD_CONFIG = {
   },
 };
 
-const SHOP_SECTIONS = ["Productos", "Insumos", "Impresoras"];
+const SHOP_SECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes"];
 
 const SECTION_SUBSECTIONS = {
-  Productos: ["Llaveros", "Decoracion", "Organizacion", "Hogar", "Juguetes", "Accesorios"],
-  Insumos: ["Filamentos", "Resinas", "Boquillas", "Adhesivos", "Repuestos"],
-  Impresoras: ["Impresoras FDM", "Impresoras Resina", "Kits", "Upgrades"],
+  Llaveros: ["Personalizados", "Tematicos", "Eventos"],
+  Jarras: ["500ml", "350ml", "Personalizadas"],
+  Hogar: ["Decoracion", "Organizacion", "Lamparas"],
+  Soportes: ["Celular", "Notebook", "Consola"],
 };
 
 const DEMO_PRODUCTS = [
   {
     id: createId(),
     name: "Llavero Pixel Corazon",
-    section: "Productos",
-    category: "Llaveros",
+    section: "Llaveros",
+    category: "Tematicos",
     description: "Llavero impreso en PLA con acabado brillante.",
     price: 3200,
     images: [
@@ -52,8 +53,19 @@ const DEMO_PRODUCTS = [
   },
   {
     id: createId(),
+    name: "Jarra Personalizada 500ml",
+    section: "Jarras",
+    category: "500ml",
+    description: "Jarra personalizada con acabado resistente y gran detalle.",
+    price: 16500,
+    images: [
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
     name: "Maceta Geometrica Mini",
-    section: "Productos",
+    section: "Hogar",
     category: "Decoracion",
     description: "Ideal para suculentas. Base estable y diseno moderno.",
     price: 5800,
@@ -63,11 +75,11 @@ const DEMO_PRODUCTS = [
   },
   {
     id: createId(),
-    name: "Filamento PLA 1kg Rojo",
-    section: "Insumos",
-    category: "Filamentos",
-    description: "Bobina de filamento PLA 1.75mm para impresiones de alta calidad.",
-    price: 18900,
+    name: "Soporte de Celular Articulado",
+    section: "Soportes",
+    category: "Celular",
+    description: "Soporte firme y plegable para escritorio o mesa de luz.",
+    price: 9200,
     images: [
       "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80",
       "https://images.unsplash.com/photo-1517336714739-489689fd1ca8?auto=format&fit=crop&w=900&q=80",
@@ -75,11 +87,11 @@ const DEMO_PRODUCTS = [
   },
   {
     id: createId(),
-    name: "Impresora 3D Starter Pro",
-    section: "Impresoras",
-    category: "Impresoras FDM",
-    description: "Equipo de entrada con cama caliente y volumen compacto para hogar.",
-    price: 459000,
+    name: "Organizador Modular de Escritorio",
+    section: "Hogar",
+    category: "Organizacion",
+    description: "Organizador modular para lapices, tijeras y accesorios de uso diario.",
+    price: 13900,
     images: [
       "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=900&q=80",
     ],
@@ -90,7 +102,7 @@ const state = {
   products: loadFromStorage(STORAGE_KEYS.products, []),
   cart: loadFromStorage(STORAGE_KEYS.cart, {}),
   activeView: "shop",
-  activeSection: "Productos",
+  activeSection: "Llaveros",
   activeCategory: "Todas",
   imageIndexByProduct: {},
   heroSlides: loadFromStorage(STORAGE_KEYS.heroSlides, []),
@@ -1236,13 +1248,31 @@ function formatCategory(category) {
 
 function normalizeSection(section) {
   const clean = String(section || "").trim().toLowerCase();
+  if (clean === "llaveros") {
+    return "Llaveros";
+  }
+  if (clean === "jarras") {
+    return "Jarras";
+  }
+  if (clean === "hogar") {
+    return "Hogar";
+  }
+  if (clean === "soportes") {
+    return "Soportes";
+  }
+
+  // Mapeo de secciones viejas a la nueva estructura.
+  if (clean === "productos") {
+    return "Hogar";
+  }
   if (clean === "insumos") {
-    return "Insumos";
+    return "Soportes";
   }
   if (clean === "impresoras") {
-    return "Impresoras";
+    return "Soportes";
   }
-  return "Productos";
+
+  return "Hogar";
 }
 
 function getSubsectionsBySection(section) {
