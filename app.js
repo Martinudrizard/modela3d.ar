@@ -141,7 +141,6 @@ const state = {
     sort: "relevancia",
     brands: [],
     materials: [],
-    types: [],
   },
   imageIndexByProduct: {},
   heroSlides: loadFromStorage(STORAGE_KEYS.heroSlides, []),
@@ -179,7 +178,6 @@ const el = {
   insumosCount: document.getElementById("insumos-count"),
   insumosBrandFilters: document.getElementById("insumos-brand-filters"),
   insumosMaterialFilters: document.getElementById("insumos-material-filters"),
-  insumosTypeFilters: document.getElementById("insumos-type-filters"),
   productsSections: document.getElementById("products-sections"),
   productCardTemplate: document.getElementById("product-card-template"),
   heroCarouselImage: document.getElementById("hero-carousel-image"),
@@ -344,7 +342,6 @@ function bindEvents() {
 
   el.insumosBrandFilters.addEventListener("change", handleInsumosCheckboxFilters);
   el.insumosMaterialFilters.addEventListener("change", handleInsumosCheckboxFilters);
-  el.insumosTypeFilters.addEventListener("change", handleInsumosCheckboxFilters);
 
   el.productImagesInput.addEventListener("change", () => {
     addProductFiles(Array.from(el.productImagesInput.files || []));
@@ -1243,23 +1240,20 @@ function renderInsumosFilterPanel() {
   const products = getInsumosSourceProducts();
   const brands = uniqueSorted(products.map((p) => p.brand));
   const materials = uniqueSorted(products.map((p) => p.material));
-  const types = uniqueSorted(products.map((p) => normalizeInsumoType(p.insumoType || p.category)));
 
-  syncFilterSelectionsWithOptions(brands, materials, types);
+  syncFilterSelectionsWithOptions(brands, materials);
   renderCheckboxGroup(el.insumosBrandFilters, "brand", brands, state.insumosFilters.brands);
   renderCheckboxGroup(el.insumosMaterialFilters, "material", materials, state.insumosFilters.materials);
-  renderCheckboxGroup(el.insumosTypeFilters, "type", types, state.insumosFilters.types);
 
   el.insumosSearch.value = state.insumosFilters.query;
   el.insumosSort.value = state.insumosFilters.sort;
 }
 
-function syncFilterSelectionsWithOptions(brands, materials, types) {
+function syncFilterSelectionsWithOptions(brands, materials) {
   state.insumosFilters.brands = state.insumosFilters.brands.filter((value) => brands.includes(value));
   state.insumosFilters.materials = state.insumosFilters.materials.filter((value) =>
     materials.includes(value)
   );
-  state.insumosFilters.types = state.insumosFilters.types.filter((value) => types.includes(value));
 }
 
 function renderCheckboxGroup(container, filterType, options, selectedValues) {
@@ -1291,7 +1285,6 @@ function renderCheckboxGroup(container, filterType, options, selectedValues) {
 function handleInsumosCheckboxFilters() {
   state.insumosFilters.brands = getCheckedValues(el.insumosBrandFilters);
   state.insumosFilters.materials = getCheckedValues(el.insumosMaterialFilters);
-  state.insumosFilters.types = getCheckedValues(el.insumosTypeFilters);
   renderProducts();
 }
 
@@ -1324,14 +1317,7 @@ function getFilteredInsumosProducts() {
       ? byBrand.filter((product) => state.insumosFilters.materials.includes(product.material))
       : byBrand;
 
-  const byType =
-    state.insumosFilters.types.length > 0
-      ? byMaterial.filter((product) =>
-          state.insumosFilters.types.includes(normalizeInsumoType(product.insumoType || product.category))
-        )
-      : byMaterial;
-
-  return sortInsumosProducts(byType, state.insumosFilters.sort);
+  return sortInsumosProducts(byMaterial, state.insumosFilters.sort);
 }
 
 function sortInsumosProducts(products, sortKey) {
