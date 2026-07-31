@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   cart: "modela3d_cart_v1",
   waNumber: "modela3d_wa_number_v1",
   heroSlides: "modela3d_hero_slides_v1",
+  adminSessionKey: "modela3d_admin_session_key_v1",
 };
 
 const CLOUD_ENDPOINT = "/.netlify/functions/store";
@@ -97,6 +98,7 @@ const state = {
   heroTimerId: null,
   pendingProductFiles: [],
   waNumber: localStorage.getItem(STORAGE_KEYS.waNumber) || "",
+  adminKey: sessionStorage.getItem(STORAGE_KEYS.adminSessionKey) || "",
   cloudWarningShown: false,
 };
 
@@ -260,6 +262,10 @@ function bindEvents() {
   });
 
   el.saveWaBtn.addEventListener("click", async () => {
+    if (!ensureAdminAccess()) {
+      return;
+    }
+
     const cleanNumber = sanitizeWaNumber(el.waNumber.value);
     if (!cleanNumber) {
       alert("Ingresa un numero de WhatsApp valido.");
@@ -274,6 +280,10 @@ function bindEvents() {
 
   el.productForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+
+    if (!ensureAdminAccess()) {
+      return;
+    }
 
     const formData = new FormData(el.productForm);
     const name = String(formData.get("product-name") || "").trim();
@@ -339,6 +349,10 @@ function bindEvents() {
   });
 
   el.saveHeroImagesBtn.addEventListener("click", async () => {
+    if (!ensureAdminAccess()) {
+      return;
+    }
+
     const files = Array.from(el.heroImagesInput.files || []);
     if (!files.length) {
       alert("Subi al menos una imagen para el carrusel.");
@@ -391,6 +405,10 @@ function bindEvents() {
   });
 
   el.syncUploadBtn.addEventListener("click", async () => {
+    if (!ensureAdminAccess()) {
+      return;
+    }
+
     const [productsOk, heroOk, waOk] = await Promise.all([
       syncStateToCloud(CLOUD_KEYS.products, state.products),
       syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides),
@@ -507,6 +525,10 @@ function setCartOpen(isOpen) {
 }
 
 function switchView(viewName) {
+  if (viewName === "admin" && !ensureAdminAccess()) {
+    return;
+  }
+
   state.activeView = viewName;
 
   el.viewButtons.forEach((btn) => {
@@ -543,7 +565,7 @@ async function hydrateFromCloud() {
     if (Array.isArray(cloudProductsResult.data)) {
       state.products = cloudProductsResult.data.map(normalizeProduct);
       persistProducts();
-    } else if (cloudProductsResult.data === null && state.products.length) {
+    } else if (cloudProductsResult.data === null && state.products.length && state.adminKey) {
       await syncStateToCloud(CLOUD_KEYS.products, state.products);
     }
   }
@@ -552,7 +574,7 @@ async function hydrateFromCloud() {
     if (Array.isArray(cloudHeroSlidesResult.data)) {
       state.heroSlides = normalizeHeroSlides(cloudHeroSlidesResult.data);
       persistHeroSlides();
-    } else if (cloudHeroSlidesResult.data === null && state.heroSlides.length) {
+    } else if (cloudHeroSlidesResult.data === null && state.heroSlides.length && state.adminKey) {
       await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
     }
   }
@@ -562,7 +584,7 @@ async function hydrateFromCloud() {
       state.waNumber = sanitizeWaNumber(cloudWaNumberResult.data);
       localStorage.setItem(STORAGE_KEYS.waNumber, state.waNumber);
       el.waNumber.value = state.waNumber;
-    } else if (cloudWaNumberResult.data === null && state.waNumber) {
+    } else if (cloudWaNumberResult.data === null && state.waNumber && state.adminKey) {
       await syncStateToCloud(CLOUD_KEYS.waNumber, state.waNumber);
     }
   }
@@ -605,17 +627,28 @@ async function syncStateToCloud(key, data) {
     return false;
   }
 
+  if (!state.adminKey) {
+    showAdminAccessRequired();
+    return false;
+  }
+
   try {
     const response = await fetchWithTimeout(CLOUD_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Admin-Key": state.adminKey,
       },
       body: JSON.stringify({ key, data }),
     }, CLOUD_TIMEOUT_MS);
 
     const ok = response.ok;
     if (!ok) {
+      if (response.status === 401) {
+        clearAdminSession();
+        showAdminAccessRequired();
+        return false;
+      }
       showCloudSyncWarning();
     }
     return ok;
@@ -623,6 +656,30 @@ async function syncStateToCloud(key, data) {
     showCloudSyncWarning();
     return false;
   }
+}
+
+function ensureAdminAccess() {
+  if (state.adminKey) {
+    return true;
+  }
+
+  const typed = window.prompt("Ingresa la clave de Admin:", "");
+  if (!typed || !typed.trim()) {
+    return false;
+  }
+
+  state.adminKey = typed.trim();
+  sessionStorage.setItem(STORAGE_KEYS.adminSessionKey, state.adminKey);
+  return true;
+}
+
+function clearAdminSession() {
+  state.adminKey = "";
+  sessionStorage.removeItem(STORAGE_KEYS.adminSessionKey);
+}
+
+function showAdminAccessRequired() {
+  alert("Acceso de Admin requerido o clave invalida. Vuelve a ingresar la clave.");
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {

@@ -37,6 +37,17 @@ Abri `index.html` directamente o usa un servidor simple:
 6. En Site settings > Functions verifica que use `netlify/functions`.
 7. Abre la URL de Netlify desde tu celular para cargar fotos de galeria.
 
+## Proteger panel Admin
+
+Para que solo vos puedas usar acciones de Admin en la nube:
+
+1. En Netlify, agrega una variable de entorno del sitio:
+  - `ADMIN_PANEL_KEY` = tu clave privada
+2. Redeploy del sitio.
+3. Al entrar a Admin, la web pedira esa clave.
+
+Sin esa clave, no se podran publicar ni sincronizar cambios en la nube.
+
 ## Carga de fotos desde celular
 
 - En Admin > Nuevo producto puedes seleccionar 1 o mas fotos.

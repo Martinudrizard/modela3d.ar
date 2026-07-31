@@ -4,7 +4,7 @@ const ALLOWED_KEYS = new Set(["products", "heroSlides", "waNumber"]);
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-Admin-Key",
   "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
 };
 
@@ -40,6 +40,10 @@ exports.handler = async (event, context) => {
     }
 
     if (event.httpMethod === "POST" || event.httpMethod === "PUT") {
+      if (!isAuthorized(event)) {
+        return response(401, { ok: false, error: "Unauthorized" });
+      }
+
       const parsed = safeJsonParse(event.body || "{}");
       if (!parsed.ok) {
         return response(400, { ok: false, error: "Invalid JSON body" });
@@ -101,4 +105,18 @@ function resolveStore(context) {
     token,
     siteID,
   });
+}
+
+function isAuthorized(event) {
+  const expected = process.env.ADMIN_PANEL_KEY || "";
+  if (!expected) {
+    return false;
+  }
+
+  const provided =
+    event?.headers?.["x-admin-key"] ||
+    event?.headers?.["X-Admin-Key"] ||
+    "";
+
+  return String(provided).trim() === String(expected).trim();
 }
