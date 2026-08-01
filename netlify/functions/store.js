@@ -38,9 +38,9 @@ exports.handler = async (event, context) => {
       }
 
       if (key === "products") {
-        const productsV2 = await readProductsV2(store);
-        if (productsV2.ok && productsV2.data) {
-          return response(200, { ok: true, data: productsV2.data });
+        const mergedProducts = await readMergedProducts(store);
+        if (mergedProducts.length) {
+          return response(200, { ok: true, data: mergedProducts });
         }
       }
 
@@ -124,10 +124,10 @@ async function applyProductMutation(store, payload) {
       return { ok: false, error: "Missing product id" };
     }
 
-    const ids = await readProductIds(store);
-    const nextIds = ids.includes(productId) ? ids : [...ids, productId];
-    await writeProductIds(store, nextIds);
-    await store.set(`${PRODUCT_KEY_PREFIX}${productId}`, JSON.stringify(product));
+    const products = await readMergedProducts(store);
+    const nextProducts = products.filter((item) => String(item?.id || "").trim() !== productId);
+    nextProducts.unshift(product);
+    await writeProductsCollection(store, nextProducts);
     return { ok: true };
   }
 
@@ -137,16 +137,14 @@ async function applyProductMutation(store, payload) {
       return { ok: false, error: "Missing product id" };
     }
 
-    const ids = await readProductIds(store);
-    const nextIds = ids.filter((id) => id !== productId);
-    await writeProductIds(store, nextIds);
+    const products = await readMergedProducts(store);
+    const nextProducts = products.filter((item) => String(item?.id || "").trim() !== productId);
+    await writeProductsCollection(store, nextProducts);
     return { ok: true };
   }
 
   if (action === "set-ids") {
-    const productIds = Array.isArray(payload.productIds) ? payload.productIds : [];
-    const normalizedIds = [...new Set(productIds.map((id) => String(id || "").trim()).filter(Boolean))];
-    await writeProductIds(store, normalizedIds);
+    // El flujo usa este paso antes de upserts; no borramos aqui para evitar perder catalogo legacy durante migracion.
     return { ok: true };
   }
 
@@ -186,6 +184,50 @@ async function writeProductsV2(store, products) {
   }
 
   await writeProductIds(store, [...new Set(ids)]);
+}
+
+async function writeProductsCollection(store, products) {
+  const safeProducts = Array.isArray(products) ? products.filter((item) => item && typeof item === "object") : [];
+  await writeProductsV2(store, safeProducts);
+  await store.set("products", JSON.stringify(safeProducts));
+}
+
+async function readLegacyProducts(store) {
+  const raw = await store.get("products");
+  const parsed = raw ? safeJsonParse(raw).value : null;
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return parsed.filter((item) => item && typeof item === "object");
+}
+
+async function readMergedProducts(store) {
+  const [legacyProducts, v2Result] = await Promise.all([
+    readLegacyProducts(store),
+    readProductsV2(store),
+  ]);
+
+  const v2Products = v2Result.ok && Array.isArray(v2Result.data) ? v2Result.data : [];
+  const byId = new Map();
+
+  legacyProducts.forEach((product) => {
+    const id = String(product?.id || "").trim();
+    if (!id) {
+      return;
+    }
+    byId.set(id, product);
+  });
+
+  v2Products.forEach((product) => {
+    const id = String(product?.id || "").trim();
+    if (!id) {
+      return;
+    }
+    byId.set(id, product);
+  });
+
+  return Array.from(byId.values());
 }
 
 async function readProductIds(store) {
