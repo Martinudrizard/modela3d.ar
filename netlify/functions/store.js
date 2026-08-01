@@ -42,7 +42,7 @@ exports.handler = async (event, context) => {
       if (key === "products") {
         const mergedProducts = await readMergedProducts(store);
         if (mergedProducts.length) {
-          const compactedProducts = compactProductsForCloud(mergedProducts);
+          const compactedProducts = compactProductsForResponse(mergedProducts);
           return response(200, { ok: true, data: compactedProducts });
         }
       }
@@ -253,6 +253,23 @@ function compactProductsForCloud(products) {
     return {
       ...product,
       images: compactImages,
+    };
+  });
+}
+
+function compactProductsForResponse(products) {
+  const source = Array.isArray(products) ? products : [];
+
+  return source.map((product) => {
+    const images = Array.isArray(product?.images) ? product.images : [];
+    const safeImages = images
+      .filter((image) => typeof image === "string" && image.trim())
+      .filter((image) => !image.startsWith("data:image/"))
+      .slice(0, 1);
+
+    return {
+      ...product,
+      images: safeImages,
     };
   });
 }
