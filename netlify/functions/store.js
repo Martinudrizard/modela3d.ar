@@ -4,6 +4,8 @@ const ALLOWED_KEYS = new Set(["products", "heroSlides", "waNumber"]);
 const PRODUCT_MUTATION_KEY = "__products_mutation";
 const PRODUCTS_IDS_KEY = "products_ids_v2";
 const PRODUCT_KEY_PREFIX = "product_v2:";
+const MAX_IMAGES_PER_PRODUCT_IN_CLOUD = 1;
+const MAX_DATA_URL_LENGTH_IN_CLOUD = 260000;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -40,7 +42,8 @@ exports.handler = async (event, context) => {
       if (key === "products") {
         const mergedProducts = await readMergedProducts(store);
         if (mergedProducts.length) {
-          return response(200, { ok: true, data: mergedProducts });
+          const compactedProducts = compactProductsForCloud(mergedProducts);
+          return response(200, { ok: true, data: compactedProducts });
         }
       }
 
@@ -187,7 +190,9 @@ async function writeProductsV2(store, products) {
 }
 
 async function writeProductsCollection(store, products) {
-  const safeProducts = Array.isArray(products) ? products.filter((item) => item && typeof item === "object") : [];
+  const safeProducts = compactProductsForCloud(
+    Array.isArray(products) ? products.filter((item) => item && typeof item === "object") : []
+  );
   await writeProductsV2(store, safeProducts);
   await store.set("products", JSON.stringify(safeProducts));
 }
@@ -228,6 +233,28 @@ async function readMergedProducts(store) {
   });
 
   return Array.from(byId.values());
+}
+
+function compactProductsForCloud(products) {
+  const source = Array.isArray(products) ? products : [];
+
+  return source.map((product) => {
+    const images = Array.isArray(product?.images) ? product.images : [];
+    const compactImages = images
+      .filter((image) => typeof image === "string" && image.trim())
+      .slice(0, MAX_IMAGES_PER_PRODUCT_IN_CLOUD)
+      .filter((image) => {
+        if (!image.startsWith("data:image/")) {
+          return true;
+        }
+        return image.length <= MAX_DATA_URL_LENGTH_IN_CLOUD;
+      });
+
+    return {
+      ...product,
+      images: compactImages,
+    };
+  });
 }
 
 async function readProductIds(store) {
