@@ -266,7 +266,31 @@ async function readProductImage(store, productId) {
   const legacy = legacyProducts.find((product) => String(product?.id || "").trim() === id);
   const legacyImages = Array.isArray(legacy?.images) ? legacy.images : [];
   const legacyImage = legacyImages.find((image) => typeof image === "string" && image.trim());
-  return legacyImage || "";
+  if (legacyImage) {
+    return legacyImage;
+  }
+
+  const mergedProducts = await readMergedProducts(store);
+  const merged = mergedProducts.find((product) => String(product?.id || "").trim() === id);
+  const fallback = resolveNameBasedFallbackImage(merged?.name);
+  return fallback || "";
+}
+
+function resolveNameBasedFallbackImage(productName) {
+  const name = String(productName || "").trim().toLowerCase();
+  if (!name) {
+    return "";
+  }
+
+  if (name.includes("luna")) {
+    return "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (name.includes("ondulada")) {
+    return "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  return "";
 }
 
 function compactProductsForCloud(products) {
