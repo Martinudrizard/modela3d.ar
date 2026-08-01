@@ -35,6 +35,17 @@ exports.handler = async (event, context) => {
 
     if (event.httpMethod === "GET") {
       const key = event.queryStringParameters?.key;
+
+      if (key === "productImage") {
+        const productId = String(event.queryStringParameters?.id || "").trim();
+        if (!productId) {
+          return response(400, { ok: false, error: "Missing product id" });
+        }
+
+        const image = await readProductImage(store, productId);
+        return response(200, { ok: true, data: image || null });
+      }
+
       if (!ALLOWED_KEYS.has(key)) {
         return response(400, { ok: false, error: "Invalid key" });
       }
@@ -233,6 +244,29 @@ async function readMergedProducts(store) {
   });
 
   return Array.from(byId.values());
+}
+
+async function readProductImage(store, productId) {
+  const id = String(productId || "").trim();
+  if (!id) {
+    return "";
+  }
+
+  const v2Raw = await store.get(`${PRODUCT_KEY_PREFIX}${id}`);
+  if (v2Raw) {
+    const v2Product = safeJsonParse(v2Raw).value;
+    const v2Images = Array.isArray(v2Product?.images) ? v2Product.images : [];
+    const v2Image = v2Images.find((image) => typeof image === "string" && image.trim());
+    if (v2Image) {
+      return v2Image;
+    }
+  }
+
+  const legacyProducts = await readLegacyProducts(store);
+  const legacy = legacyProducts.find((product) => String(product?.id || "").trim() === id);
+  const legacyImages = Array.isArray(legacy?.images) ? legacy.images : [];
+  const legacyImage = legacyImages.find((image) => typeof image === "string" && image.trim());
+  return legacyImage || "";
 }
 
 function compactProductsForCloud(products) {

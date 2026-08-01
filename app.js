@@ -156,6 +156,8 @@ const state = {
   logoTapCount: 0,
   logoTapTimerId: null,
   cloudWarningShown: false,
+  productImageById: {},
+  productImageFetchInFlight: {},
 };
 
 const el = {
@@ -794,7 +796,25 @@ async function hydrateFromCloud() {
 
   if (cloudProductsResult.ok) {
     if (Array.isArray(cloudProductsResult.data)) {
-      state.products = cloudProductsResult.data.map(normalizeProduct);
+      const localById = new Map(
+        state.products.map((product) => [String(product.id || "").trim(), product])
+      );
+
+      state.products = cloudProductsResult.data.map((rawProduct) => {
+        const normalized = normalizeProduct(rawProduct);
+        const local = localById.get(String(normalized.id || "").trim());
+        const hasCloudImages = Array.isArray(normalized.images) && normalized.images.length > 0;
+        const hasLocalImages = Array.isArray(local?.images) && local.images.length > 0;
+
+        if (!hasCloudImages && hasLocalImages) {
+          return {
+            ...normalized,
+            images: local.images,
+          };
+        }
+
+        return normalized;
+      });
       persistProducts();
     } else if (cloudProductsResult.data === null && state.products.length && state.adminKey) {
       await syncStateToCloud(CLOUD_KEYS.products, state.products);
@@ -1262,10 +1282,20 @@ function buildProductCard(product) {
   const price = fragment.querySelector(".product-price");
   const addButton = fragment.querySelector(".btn-add");
 
+  const productImages = Array.isArray(product.images) ? product.images : [];
   const selectedImageIndex = state.imageIndexByProduct[product.id] || 0;
-  const validIndex = Math.min(selectedImageIndex, product.images.length - 1);
+  const validIndex = Math.min(selectedImageIndex, Math.max(productImages.length - 1, 0));
+  const resolvedImage = getRenderableProductImage(product, validIndex);
 
-  image.src = product.images[validIndex] || "";
+  image.src = resolvedImage || buildMissingImagePlaceholder(product.name);
+  image.addEventListener("error", () => {
+    image.src = buildMissingImagePlaceholder(product.name);
+  });
+
+  if (!resolvedImage) {
+    void ensureProductImageLoaded(product.id);
+  }
+
   image.alt = product.name;
   title.textContent = product.name;
   desc.textContent = product.description;
@@ -1276,13 +1306,13 @@ function buildProductCard(product) {
   prevButton.dataset.productId = product.id;
   nextButton.dataset.productId = product.id;
 
-  const hasMultipleImages = product.images.length > 1;
+  const hasMultipleImages = productImages.length > 1;
   prevButton.classList.toggle("hidden", !hasMultipleImages);
   nextButton.classList.toggle("hidden", !hasMultipleImages);
 
   controls.innerHTML = "";
   if (hasMultipleImages) {
-    product.images.forEach((_, index) => {
+    productImages.forEach((_, index) => {
       const dot = document.createElement("button");
       dot.className = "dot";
       dot.type = "button";
@@ -1311,6 +1341,84 @@ function moveProductImage(productId, delta) {
   const nextIndex = (currentIndex + delta + product.images.length) % product.images.length;
   state.imageIndexByProduct[productId] = nextIndex;
   renderProducts();
+}
+
+function getRenderableProductImage(product, index) {
+  const productImages = Array.isArray(product?.images) ? product.images : [];
+  const imageFromProduct = productImages[index] || productImages[0] || "";
+  if (typeof imageFromProduct === "string" && imageFromProduct.trim()) {
+    return imageFromProduct;
+  }
+
+  const cachedImage = state.productImageById[String(product?.id || "").trim()];
+  if (typeof cachedImage === "string" && cachedImage.trim()) {
+    return cachedImage;
+  }
+
+  return "";
+}
+
+async function ensureProductImageLoaded(productId) {
+  const id = String(productId || "").trim();
+  if (!id) {
+    return;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(state.productImageById, id)) {
+    return;
+  }
+
+  if (state.productImageFetchInFlight[id]) {
+    return;
+  }
+
+  state.productImageFetchInFlight[id] = true;
+  try {
+    const image = await fetchProductImageFromCloud(id);
+    state.productImageById[id] = image || null;
+    if (image) {
+      const target = state.products.find((product) => product.id === id);
+      if (target && (!Array.isArray(target.images) || !target.images.length)) {
+        target.images = [image];
+        persistProducts();
+      }
+    }
+    renderProducts();
+  } finally {
+    delete state.productImageFetchInFlight[id];
+  }
+}
+
+async function fetchProductImageFromCloud(productId) {
+  if (isLocalFileMode()) {
+    return "";
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      `${CLOUD_ENDPOINT}?key=productImage&id=${encodeURIComponent(productId)}`,
+      {},
+      CLOUD_TIMEOUT_MS
+    );
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const payload = await response.json();
+    if (!payload?.ok || typeof payload.data !== "string") {
+      return "";
+    }
+
+    return payload.data.trim();
+  } catch {
+    return "";
+  }
+}
+
+function buildMissingImagePlaceholder(name) {
+  const text = encodeURIComponent(String(name || "Producto"));
+  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'><rect width='800' height='800' fill='%23ececec'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='34' font-family='Arial, sans-serif'>${text}</text></svg>`;
 }
 
 function handleProductGridClick(event) {
