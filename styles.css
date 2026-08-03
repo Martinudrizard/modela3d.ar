@@ -340,24 +340,15 @@ main {
 
 .catalog-menu-backdrop,
 .catalog-menu-head,
+.catalog-menu-back,
+.catalog-menu-title,
 .catalog-menu-close,
-.catalog-menu-brand {
+.catalog-drawer-nav {
   display: none;
 }
 
-.catalog-chip-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.chip-leading,
-.chip-trailing {
-  display: none;
-}
-
-.chip-label {
-  display: inline;
+.catalog-desktop-filters {
+  display: block;
 }
 
 .category-filter {
@@ -1416,7 +1407,7 @@ body.modal-open {
 
   .catalog-menu-head {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     padding: 14px 16px;
     border-bottom: 1px solid #ececec;
@@ -1426,19 +1417,28 @@ body.modal-open {
     z-index: 1;
   }
 
-  .catalog-menu-brand {
+  .catalog-menu-back {
     display: inline-flex;
-    min-width: 46px;
+    width: 34px;
     height: 34px;
-    padding: 0 10px;
-    border-radius: 8px;
-    background: #111;
-    color: #fff;
+    border-radius: 999px;
+    border: 1px solid #d6d6d6;
+    background: #fff;
+    color: #111;
     align-items: center;
     justify-content: center;
-    font-family: "Bebas Neue", sans-serif;
-    letter-spacing: 1.2px;
-    font-size: 1.1rem;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .catalog-menu-title {
+    display: block;
+    margin-left: 10px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #111;
+    flex: 1;
   }
 
   .catalog-menu-close {
@@ -1456,79 +1456,52 @@ body.modal-open {
     cursor: pointer;
   }
 
-  .catalog-menu .section-filter,
-  .catalog-menu .category-filter,
-  .catalog-menu #jarra-size-filter {
-    margin-top: 0;
-    border: 0;
-    border-radius: 0;
-    background: #fff;
-    border-bottom: 1px solid #f0f0f0;
-    padding: 8px 16px 12px;
+  .catalog-drawer-nav {
+    display: block;
   }
 
-  .catalog-menu .section-filter h3,
-  .catalog-menu .category-filter h3,
-  .catalog-menu #jarra-size-filter h3 {
-    color: #111;
-    margin: 8px 0 6px;
-    font-size: 1rem;
-    font-family: "Barlow", sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-  }
-
-  .catalog-menu .chips {
+  .catalog-drawer-list {
     display: grid;
-    gap: 0;
   }
 
-  .catalog-chip-row {
+  .catalog-drawer-item {
     width: 100%;
     border: 0;
     border-bottom: 1px solid #efefef;
-    border-radius: 0;
     background: #fff;
     color: #111;
-    padding: 14px 2px;
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    justify-content: flex-start;
-    gap: 10px;
-  }
-
-  .catalog-chip-row:last-child {
-    border-bottom: 0;
-  }
-
-  .chip-leading,
-  .chip-trailing {
-    display: inline;
-  }
-
-  .chip-leading {
-    min-width: 1.3em;
-    font-size: 1.05em;
-  }
-
-  .chip-label {
-    flex: 1;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     text-align: left;
+    cursor: pointer;
   }
 
-  .chip-trailing {
-    color: #6f6f6f;
-    font-size: 1.25rem;
+  .catalog-drawer-text {
+    font-size: 2rem;
+    font-family: "Bebas Neue", sans-serif;
+    letter-spacing: 0.8px;
+    line-height: 1.05;
+  }
+
+  .catalog-drawer-chevron {
+    color: #666;
+    font-size: 1.45rem;
     line-height: 1;
   }
 
-  .catalog-chip-row.active {
+  .catalog-drawer-item.active .catalog-drawer-text {
     color: #d71920;
-    font-weight: 700;
-    background: #fff;
-    border-color: #f0f0f0;
+  }
+
+  .catalog-drawer-item:active {
+    background: #f8f8f8;
+  }
+
+  .catalog-desktop-filters {
+    display: none;
   }
 
   .hero-media {
@@ -1550,11 +1523,6 @@ body.modal-open {
   .products-grid {
     grid-template-columns: 1fr;
     gap: 8px;
-  }
-
-  .catalog-menu .section-filter,
-  .catalog-menu .category-filter {
-    margin-top: 0;
   }
 
   .insumos-results-head {

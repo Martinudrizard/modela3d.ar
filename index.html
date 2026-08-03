@@ -80,26 +80,35 @@
           <div id="catalog-menu-backdrop" class="catalog-menu-backdrop" aria-hidden="true"></div>
           <div id="catalog-menu-panel" class="catalog-menu-panel">
             <div class="catalog-menu-head">
-              <span class="catalog-menu-brand" aria-hidden="true">M3D</span>
+              <button id="catalog-menu-back" class="catalog-menu-back" type="button" aria-label="Volver">
+                ‹
+              </button>
+              <strong id="catalog-menu-title" class="catalog-menu-title">Menu</strong>
               <button id="catalog-menu-close" class="catalog-menu-close" type="button" aria-label="Cerrar menu">
                 ×
               </button>
             </div>
 
-            <section class="section-filter" aria-label="Filtrar por seccion">
-              <h3>Secciones</h3>
-              <div id="section-chips" class="chips section-chips"></div>
-            </section>
+            <div id="catalog-drawer-nav" class="catalog-drawer-nav">
+              <div id="catalog-drawer-list" class="catalog-drawer-list"></div>
+            </div>
 
-            <section id="product-subsection-filter" class="category-filter" aria-label="Subsecciones de productos">
-              <h3 id="product-subsection-title">Productos</h3>
-              <div id="product-subsection-chips" class="chips"></div>
-            </section>
+            <div class="catalog-desktop-filters">
+              <section class="section-filter" aria-label="Filtrar por seccion">
+                <h3>Secciones</h3>
+                <div id="section-chips" class="chips section-chips"></div>
+              </section>
 
-            <section id="jarra-size-filter" class="category-filter hidden-block" aria-label="Filtrar jarras por capacidad">
-              <h3>Capacidad de jarras</h3>
-              <div id="jarra-size-chips" class="chips"></div>
-            </section>
+              <section id="product-subsection-filter" class="category-filter" aria-label="Subsecciones de productos">
+                <h3 id="product-subsection-title">Productos</h3>
+                <div id="product-subsection-chips" class="chips"></div>
+              </section>
+
+              <section id="jarra-size-filter" class="category-filter hidden-block" aria-label="Filtrar jarras por capacidad">
+                <h3>Capacidad de jarras</h3>
+                <div id="jarra-size-chips" class="chips"></div>
+              </section>
+            </div>
           </div>
         </section>
 

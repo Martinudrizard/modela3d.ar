@@ -36,28 +36,6 @@ const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
 const IMPRESORAS_SUBSECTIONS = ["FDM", "Resina", "Profesional"];
 const JARRA_SIZES = ["500ml", "1 litro"];
 
-const SECTION_ICONS = {
-  Productos: "📦",
-  Insumos: "🧪",
-  "Impresoras 3D": "🖨️",
-};
-
-const SUBSECTION_ICONS = {
-  Llaveros: "🔑",
-  Jarras: "🍺",
-  Hogar: "🏠",
-  Soportes: "🧩",
-  Filamento: "🧵",
-  Resina: "💧",
-  Repuesto: "🛠️",
-  Accesorio: "✨",
-  FDM: "⚙️",
-  Profesional: "🏭",
-  "500ml": "🥤",
-  "1 litro": "🥤",
-  Todas: "📋",
-};
-
 const SECTION_SUBSECTIONS = {
   Productos: PRODUCT_SUBSECTIONS,
   Insumos: INSUMO_SUBSECTIONS,
@@ -187,6 +165,8 @@ const state = {
     open: false,
   },
   catalogMenuOpen: false,
+  catalogDrawerMode: "root",
+  catalogDrawerSection: "",
   toastTimerById: {},
 };
 
@@ -199,10 +179,13 @@ const el = {
     admin: document.getElementById("admin-view"),
   },
   catalogMenuToggle: document.getElementById("catalog-menu-toggle"),
+  catalogMenuBack: document.getElementById("catalog-menu-back"),
+  catalogMenuTitle: document.getElementById("catalog-menu-title"),
   catalogMenuClose: document.getElementById("catalog-menu-close"),
   catalogMenuBackdrop: document.getElementById("catalog-menu-backdrop"),
   catalogMenuPanel: document.getElementById("catalog-menu-panel"),
   catalogMenuSummary: document.getElementById("catalog-menu-summary"),
+  catalogDrawerList: document.getElementById("catalog-drawer-list"),
   sectionChips: document.getElementById("section-chips"),
   productSubsectionFilter: document.getElementById("product-subsection-filter"),
   productSubsectionTitle: document.getElementById("product-subsection-title"),
@@ -319,8 +302,39 @@ function bindEvents() {
     setCatalogMenuOpen(false);
   });
 
+  el.catalogMenuBack?.addEventListener("click", () => {
+    navigateCatalogDrawerBack();
+  });
+
   el.catalogMenuBackdrop?.addEventListener("click", () => {
     setCatalogMenuOpen(false);
+  });
+
+  el.catalogDrawerList?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const button = target.closest("button[data-menu-action]");
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const action = button.dataset.menuAction;
+    if (action === "section") {
+      handleCatalogSectionSelection(button.dataset.section);
+      return;
+    }
+
+    if (action === "subsection") {
+      handleCatalogSubsectionSelection(button.dataset.subsection);
+      return;
+    }
+
+    if (action === "jarra-size") {
+      handleCatalogJarraSizeSelection(button.dataset.jarraSize);
+    }
   });
 
   window.addEventListener("resize", () => {
@@ -402,7 +416,11 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.catalogMenuOpen) {
-      setCatalogMenuOpen(false);
+      if (state.catalogDrawerMode !== "root") {
+        navigateCatalogDrawerBack();
+      } else {
+        setCatalogMenuOpen(false);
+      }
       return;
     }
 
@@ -1216,8 +1234,8 @@ function renderSectionChips() {
 
   SHOP_SECTIONS.forEach((section) => {
     const button = document.createElement("button");
-    button.className = "chip catalog-chip-row";
-    setCatalogChipContent(button, section, SECTION_ICONS[section] || "•");
+    button.className = "chip";
+    button.textContent = section;
     button.classList.toggle("active", section === state.activeSection);
 
     button.addEventListener("click", () => {
@@ -1238,6 +1256,7 @@ function renderSectionChips() {
   });
 
   updateCatalogMenuSummary();
+  renderCatalogDrawerMenu();
 }
 
 function renderProductSubsectionChips() {
@@ -1258,8 +1277,8 @@ function renderProductSubsectionChips() {
   el.productSubsectionChips.innerHTML = "";
   subsectionOptions.forEach((subsection) => {
     const button = document.createElement("button");
-    button.className = "chip catalog-chip-row";
-    setCatalogChipContent(button, subsection, SUBSECTION_ICONS[subsection] || "•");
+    button.className = "chip";
+    button.textContent = subsection;
     button.classList.toggle("active", subsection === state.activeCategory);
     button.addEventListener("click", () => {
       state.activeCategory = subsection;
@@ -1273,6 +1292,7 @@ function renderProductSubsectionChips() {
   });
 
   updateCatalogMenuSummary();
+  renderCatalogDrawerMenu();
 }
 
 function renderJarraSizeChips() {
@@ -1291,9 +1311,8 @@ function renderJarraSizeChips() {
   el.jarraSizeChips.innerHTML = "";
   options.forEach((size) => {
     const button = document.createElement("button");
-    button.className = "chip catalog-chip-row";
-    const label = size === "500ml" ? "500 ml" : size;
-    setCatalogChipContent(button, label, SUBSECTION_ICONS[size] || "•");
+    button.className = "chip";
+    button.textContent = size === "500ml" ? "500 ml" : size;
     button.classList.toggle("active", size === state.activeJarraSize);
     button.addEventListener("click", () => {
       state.activeJarraSize = size;
@@ -1305,6 +1324,7 @@ function renderJarraSizeChips() {
   });
 
   updateCatalogMenuSummary();
+  renderCatalogDrawerMenu();
 }
 
 function updateCatalogVisibility() {
@@ -1984,27 +2004,6 @@ function isMobileViewport() {
   return window.matchMedia("(max-width: 760px)").matches;
 }
 
-function setCatalogChipContent(button, label, icon) {
-  button.innerHTML = "";
-
-  const leading = document.createElement("span");
-  leading.className = "chip-leading";
-  leading.textContent = icon;
-
-  const text = document.createElement("span");
-  text.className = "chip-label";
-  text.textContent = label;
-
-  const trailing = document.createElement("span");
-  trailing.className = "chip-trailing";
-  trailing.textContent = "›";
-  trailing.setAttribute("aria-hidden", "true");
-
-  button.appendChild(leading);
-  button.appendChild(text);
-  button.appendChild(trailing);
-}
-
 function setCatalogMenuOpen(isOpen, force = false) {
   if (!el.catalogMenuPanel || !el.catalogMenuToggle) {
     return;
@@ -2012,6 +2011,11 @@ function setCatalogMenuOpen(isOpen, force = false) {
 
   const shouldCollapse = isMobileViewport();
   state.catalogMenuOpen = shouldCollapse ? Boolean(isOpen) : true;
+
+  if (shouldCollapse && state.catalogMenuOpen) {
+    state.catalogDrawerMode = "root";
+    state.catalogDrawerSection = "";
+  }
 
   const isExpanded = state.catalogMenuOpen;
   el.catalogMenuPanel.classList.toggle("open", isExpanded);
@@ -2022,6 +2026,7 @@ function setCatalogMenuOpen(isOpen, force = false) {
   el.catalogMenuToggle.hidden = !shouldCollapse;
   document.body.classList.toggle("catalog-menu-open", shouldCollapse && isExpanded);
   updateCatalogMenuSummary();
+  renderCatalogDrawerMenu();
 }
 
 function closeCatalogMenuAfterFilterSelect() {
@@ -2048,6 +2053,165 @@ function updateCatalogMenuSummary() {
   }
 
   el.catalogMenuSummary.textContent = summary;
+}
+
+function navigateCatalogDrawerBack() {
+  if (state.catalogDrawerMode === "jarra-size") {
+    state.catalogDrawerMode = "subsections";
+    renderCatalogDrawerMenu();
+    return;
+  }
+
+  if (state.catalogDrawerMode === "subsections") {
+    state.catalogDrawerMode = "root";
+    state.catalogDrawerSection = "";
+    renderCatalogDrawerMenu();
+    return;
+  }
+
+  setCatalogMenuOpen(false);
+}
+
+function handleCatalogSectionSelection(rawSection) {
+  const section = normalizeSection(rawSection);
+  state.activeSection = section;
+  state.activeJarraSize = "Todas";
+  state.catalogDrawerSection = section;
+
+  if (section === "Insumos") {
+    state.activeCategory = "Todas";
+    renderSectionChips();
+    renderProductSubsectionChips();
+    renderJarraSizeChips();
+    renderInsumosFilterPanel();
+    updateCatalogVisibility();
+    renderProducts();
+    closeCatalogMenuAfterFilterSelect();
+    return;
+  }
+
+  const subsectionOptions = getSubsectionsBySection(section);
+  state.activeCategory = subsectionOptions[0] || "Todas";
+  state.catalogDrawerMode = "subsections";
+  renderSectionChips();
+  renderProductSubsectionChips();
+  renderJarraSizeChips();
+  updateCatalogVisibility();
+  renderProducts();
+  renderCatalogDrawerMenu();
+}
+
+function handleCatalogSubsectionSelection(subsection) {
+  const section = normalizeSection(state.catalogDrawerSection || state.activeSection);
+  state.activeSection = section;
+  state.activeCategory = subsection;
+  state.activeJarraSize = "Todas";
+
+  if (section === "Productos" && subsection === "Jarras") {
+    state.catalogDrawerMode = "jarra-size";
+    renderSectionChips();
+    renderProductSubsectionChips();
+    renderJarraSizeChips();
+    updateCatalogVisibility();
+    renderProducts();
+    renderCatalogDrawerMenu();
+    return;
+  }
+
+  renderSectionChips();
+  renderProductSubsectionChips();
+  renderJarraSizeChips();
+  updateCatalogVisibility();
+  renderProducts();
+  closeCatalogMenuAfterFilterSelect();
+}
+
+function handleCatalogJarraSizeSelection(size) {
+  state.activeSection = "Productos";
+  state.activeCategory = "Jarras";
+  state.activeJarraSize = size || "Todas";
+  renderSectionChips();
+  renderProductSubsectionChips();
+  renderJarraSizeChips();
+  updateCatalogVisibility();
+  renderProducts();
+  closeCatalogMenuAfterFilterSelect();
+}
+
+function renderCatalogDrawerMenu() {
+  if (!el.catalogDrawerList || !el.catalogMenuTitle || !el.catalogMenuBack) {
+    return;
+  }
+
+  const isMobile = isMobileViewport();
+  el.catalogMenuBack.classList.toggle("hidden-block", !isMobile || state.catalogDrawerMode === "root");
+
+  if (state.catalogDrawerMode === "root") {
+    el.catalogMenuTitle.textContent = "Menu";
+    el.catalogDrawerList.innerHTML = "";
+
+    SHOP_SECTIONS.forEach((section) => {
+      const row = buildCatalogDrawerRow(section, "section", { section });
+      row.classList.toggle("active", state.activeSection === section);
+      el.catalogDrawerList.appendChild(row);
+    });
+    return;
+  }
+
+  if (state.catalogDrawerMode === "subsections") {
+    const section = normalizeSection(state.catalogDrawerSection || state.activeSection);
+    el.catalogMenuTitle.textContent = section;
+    el.catalogDrawerList.innerHTML = "";
+
+    const subsectionOptions = getSubsectionsBySection(section);
+    subsectionOptions.forEach((subsection) => {
+      const row = buildCatalogDrawerRow(subsection, "subsection", { subsection });
+      row.classList.toggle("active", state.activeSection === section && state.activeCategory === subsection);
+      el.catalogDrawerList.appendChild(row);
+    });
+    return;
+  }
+
+  el.catalogMenuTitle.textContent = "Capacidad";
+  el.catalogDrawerList.innerHTML = "";
+
+  ["Todas", ...JARRA_SIZES].forEach((size) => {
+    const label = size === "500ml" ? "500 ml" : size;
+    const row = buildCatalogDrawerRow(label, "jarra-size", { jarraSize: size }, false);
+    row.classList.toggle("active", state.activeJarraSize === size);
+    el.catalogDrawerList.appendChild(row);
+  });
+}
+
+function buildCatalogDrawerRow(label, action, data = {}, showChevron = true) {
+  const button = document.createElement("button");
+  button.className = "catalog-drawer-item";
+  button.type = "button";
+  button.dataset.menuAction = action;
+  if (data.section) {
+    button.dataset.section = data.section;
+  }
+  if (data.subsection) {
+    button.dataset.subsection = data.subsection;
+  }
+  if (data.jarraSize) {
+    button.dataset.jarraSize = data.jarraSize;
+  }
+
+  const text = document.createElement("span");
+  text.className = "catalog-drawer-text";
+  text.textContent = label;
+  button.appendChild(text);
+
+  if (showChevron) {
+    const chevron = document.createElement("span");
+    chevron.className = "catalog-drawer-chevron";
+    chevron.textContent = "›";
+    chevron.setAttribute("aria-hidden", "true");
+    button.appendChild(chevron);
+  }
+
+  return button;
 }
 
 function persistProducts() {
