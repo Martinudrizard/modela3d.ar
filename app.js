@@ -36,6 +36,28 @@ const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
 const IMPRESORAS_SUBSECTIONS = ["FDM", "Resina", "Profesional"];
 const JARRA_SIZES = ["500ml", "1 litro"];
 
+const SECTION_ICONS = {
+  Productos: "📦",
+  Insumos: "🧪",
+  "Impresoras 3D": "🖨️",
+};
+
+const SUBSECTION_ICONS = {
+  Llaveros: "🔑",
+  Jarras: "🍺",
+  Hogar: "🏠",
+  Soportes: "🧩",
+  Filamento: "🧵",
+  Resina: "💧",
+  Repuesto: "🛠️",
+  Accesorio: "✨",
+  FDM: "⚙️",
+  Profesional: "🏭",
+  "500ml": "🥤",
+  "1 litro": "🥤",
+  Todas: "📋",
+};
+
 const SECTION_SUBSECTIONS = {
   Productos: PRODUCT_SUBSECTIONS,
   Insumos: INSUMO_SUBSECTIONS,
@@ -177,6 +199,8 @@ const el = {
     admin: document.getElementById("admin-view"),
   },
   catalogMenuToggle: document.getElementById("catalog-menu-toggle"),
+  catalogMenuClose: document.getElementById("catalog-menu-close"),
+  catalogMenuBackdrop: document.getElementById("catalog-menu-backdrop"),
   catalogMenuPanel: document.getElementById("catalog-menu-panel"),
   catalogMenuSummary: document.getElementById("catalog-menu-summary"),
   sectionChips: document.getElementById("section-chips"),
@@ -291,6 +315,14 @@ function bindEvents() {
     setCatalogMenuOpen(!state.catalogMenuOpen);
   });
 
+  el.catalogMenuClose?.addEventListener("click", () => {
+    setCatalogMenuOpen(false);
+  });
+
+  el.catalogMenuBackdrop?.addEventListener("click", () => {
+    setCatalogMenuOpen(false);
+  });
+
   window.addEventListener("resize", () => {
     setCatalogMenuOpen(state.catalogMenuOpen, true);
   });
@@ -369,6 +401,11 @@ function bindEvents() {
   el.lightboxNext.addEventListener("click", () => stepLightbox(1));
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.catalogMenuOpen) {
+      setCatalogMenuOpen(false);
+      return;
+    }
+
     if (!state.lightbox.open) {
       return;
     }
@@ -1179,8 +1216,8 @@ function renderSectionChips() {
 
   SHOP_SECTIONS.forEach((section) => {
     const button = document.createElement("button");
-    button.className = "chip";
-    button.textContent = section;
+    button.className = "chip catalog-chip-row";
+    setCatalogChipContent(button, section, SECTION_ICONS[section] || "•");
     button.classList.toggle("active", section === state.activeSection);
 
     button.addEventListener("click", () => {
@@ -1221,8 +1258,8 @@ function renderProductSubsectionChips() {
   el.productSubsectionChips.innerHTML = "";
   subsectionOptions.forEach((subsection) => {
     const button = document.createElement("button");
-    button.className = "chip";
-    button.textContent = subsection;
+    button.className = "chip catalog-chip-row";
+    setCatalogChipContent(button, subsection, SUBSECTION_ICONS[subsection] || "•");
     button.classList.toggle("active", subsection === state.activeCategory);
     button.addEventListener("click", () => {
       state.activeCategory = subsection;
@@ -1254,8 +1291,9 @@ function renderJarraSizeChips() {
   el.jarraSizeChips.innerHTML = "";
   options.forEach((size) => {
     const button = document.createElement("button");
-    button.className = "chip";
-    button.textContent = size === "500ml" ? "500 ml" : size;
+    button.className = "chip catalog-chip-row";
+    const label = size === "500ml" ? "500 ml" : size;
+    setCatalogChipContent(button, label, SUBSECTION_ICONS[size] || "•");
     button.classList.toggle("active", size === state.activeJarraSize);
     button.addEventListener("click", () => {
       state.activeJarraSize = size;
@@ -1946,6 +1984,27 @@ function isMobileViewport() {
   return window.matchMedia("(max-width: 760px)").matches;
 }
 
+function setCatalogChipContent(button, label, icon) {
+  button.innerHTML = "";
+
+  const leading = document.createElement("span");
+  leading.className = "chip-leading";
+  leading.textContent = icon;
+
+  const text = document.createElement("span");
+  text.className = "chip-label";
+  text.textContent = label;
+
+  const trailing = document.createElement("span");
+  trailing.className = "chip-trailing";
+  trailing.textContent = "›";
+  trailing.setAttribute("aria-hidden", "true");
+
+  button.appendChild(leading);
+  button.appendChild(text);
+  button.appendChild(trailing);
+}
+
 function setCatalogMenuOpen(isOpen, force = false) {
   if (!el.catalogMenuPanel || !el.catalogMenuToggle) {
     return;
@@ -1958,8 +2017,10 @@ function setCatalogMenuOpen(isOpen, force = false) {
   el.catalogMenuPanel.classList.toggle("open", isExpanded);
   el.catalogMenuPanel.classList.toggle("collapsed", shouldCollapse && !isExpanded);
   el.catalogMenuToggle.classList.toggle("open", isExpanded);
+  el.catalogMenuBackdrop?.classList.toggle("open", shouldCollapse && isExpanded);
   el.catalogMenuToggle.setAttribute("aria-expanded", String(isExpanded));
   el.catalogMenuToggle.hidden = !shouldCollapse;
+  document.body.classList.toggle("catalog-menu-open", shouldCollapse && isExpanded);
   updateCatalogMenuSummary();
 }
 

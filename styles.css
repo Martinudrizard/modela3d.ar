@@ -338,6 +338,28 @@ main {
   display: block;
 }
 
+.catalog-menu-backdrop,
+.catalog-menu-head,
+.catalog-menu-close,
+.catalog-menu-brand {
+  display: none;
+}
+
+.catalog-chip-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.chip-leading,
+.chip-trailing {
+  display: none;
+}
+
+.chip-label {
+  display: inline;
+}
+
 .category-filter {
   margin-top: 16px;
   background: #fff;
@@ -1353,20 +1375,160 @@ body.modal-open {
   }
 
   .catalog-menu-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(92vw, 380px);
+    background: #fff;
+    z-index: 62;
+    border-left: 1px solid #e6e6e6;
+    box-shadow: -18px 0 38px rgba(0, 0, 0, 0.2);
     display: grid;
     gap: 0;
-    max-height: 1200px;
+    max-height: none;
     opacity: 1;
-    overflow: hidden;
-    transition: max-height 220ms ease, opacity 200ms ease, transform 200ms ease;
-    transform: translateY(0);
+    overflow: auto;
+    transition: transform 260ms ease;
+    transform: translateX(0);
   }
 
   .catalog-menu-panel.collapsed {
-    max-height: 0;
-    opacity: 0;
-    transform: translateY(-8px);
+    transform: translateX(104%);
     pointer-events: none;
+  }
+
+  .catalog-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.42);
+    z-index: 61;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+  }
+
+  .catalog-menu-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .catalog-menu-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #ececec;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+  }
+
+  .catalog-menu-brand {
+    display: inline-flex;
+    min-width: 46px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 8px;
+    background: #111;
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    font-family: "Bebas Neue", sans-serif;
+    letter-spacing: 1.2px;
+    font-size: 1.1rem;
+  }
+
+  .catalog-menu-close {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid #d6d6d6;
+    background: #fff;
+    color: #111;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .catalog-menu .section-filter,
+  .catalog-menu .category-filter,
+  .catalog-menu #jarra-size-filter {
+    margin-top: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 8px 16px 12px;
+  }
+
+  .catalog-menu .section-filter h3,
+  .catalog-menu .category-filter h3,
+  .catalog-menu #jarra-size-filter h3 {
+    color: #111;
+    margin: 8px 0 6px;
+    font-size: 1rem;
+    font-family: "Barlow", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .catalog-menu .chips {
+    display: grid;
+    gap: 0;
+  }
+
+  .catalog-chip-row {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid #efefef;
+    border-radius: 0;
+    background: #fff;
+    color: #111;
+    padding: 14px 2px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .catalog-chip-row:last-child {
+    border-bottom: 0;
+  }
+
+  .chip-leading,
+  .chip-trailing {
+    display: inline;
+  }
+
+  .chip-leading {
+    min-width: 1.3em;
+    font-size: 1.05em;
+  }
+
+  .chip-label {
+    flex: 1;
+    text-align: left;
+  }
+
+  .chip-trailing {
+    color: #6f6f6f;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .catalog-chip-row.active {
+    color: #d71920;
+    font-weight: 700;
+    background: #fff;
+    border-color: #f0f0f0;
   }
 
   .hero-media {
@@ -1392,7 +1554,7 @@ body.modal-open {
 
   .catalog-menu .section-filter,
   .catalog-menu .category-filter {
-    margin-top: 10px;
+    margin-top: 0;
   }
 
   .insumos-results-head {
@@ -1463,4 +1625,8 @@ body.modal-open {
   .toast p {
     font-size: 1.02rem;
   }
+}
+
+body.catalog-menu-open {
+  overflow: hidden;
 }

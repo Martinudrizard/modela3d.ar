@@ -77,7 +77,15 @@
         </div>
 
         <section class="catalog-menu" aria-label="Filtros del catalogo">
+          <div id="catalog-menu-backdrop" class="catalog-menu-backdrop" aria-hidden="true"></div>
           <div id="catalog-menu-panel" class="catalog-menu-panel">
+            <div class="catalog-menu-head">
+              <span class="catalog-menu-brand" aria-hidden="true">M3D</span>
+              <button id="catalog-menu-close" class="catalog-menu-close" type="button" aria-label="Cerrar menu">
+                ×
+              </button>
+            </div>
+
             <section class="section-filter" aria-label="Filtrar por seccion">
               <h3>Secciones</h3>
               <div id="section-chips" class="chips section-chips"></div>
