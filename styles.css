@@ -672,6 +672,13 @@ main {
   color: #111;
 }
 
+.product-price-inquiry {
+  font-size: 0.82rem;
+  color: #c3131b;
+  max-width: 22ch;
+  line-height: 1.2;
+}
+
 .btn-add,
 .btn-primary,
 .btn-ghost {
@@ -1518,6 +1525,17 @@ body.modal-open {
     color: #d71920;
   }
 
+  .catalog-drawer-item-cta {
+    border-top: 1px solid #e6e6e6;
+    margin-top: 4px;
+  }
+
+  .catalog-drawer-item-cta .catalog-drawer-text {
+    color: #0f0f0f;
+    font-size: 1.45rem;
+    letter-spacing: 0.5px;
+  }
+
   .catalog-drawer-item:active {
     background: #f8f8f8;
   }
@@ -1531,6 +1549,16 @@ body.modal-open {
     min-width: 0;
     aspect-ratio: 1 / 1;
     max-height: 54vh;
+  }
+
+  .image-wrap {
+    aspect-ratio: 1 / 1;
+    background: #f4f4f4;
+  }
+
+  .product-image {
+    object-fit: contain;
+    padding: 6px;
   }
 
   .hero h2 {

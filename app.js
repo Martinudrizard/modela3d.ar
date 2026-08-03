@@ -272,6 +272,7 @@ async function init() {
   populateAdminSubsections(normalizeSection(el.productSection.value));
   toggleJarraExtraFields(normalizeSection(el.productSection.value) === "Productos" && el.productCategory.value === "Jarras");
   toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
+  toggleProductPriceMode(normalizeSection(el.productSection.value));
   renderProductImageCount();
   updateProductFormMode();
   updateAdminVisibility();
@@ -334,6 +335,11 @@ function bindEvents() {
 
     if (action === "jarra-size") {
       handleCatalogJarraSizeSelection(button.dataset.jarraSize);
+      return;
+    }
+
+    if (action === "quote") {
+      handleCatalogQuoteRequest();
     }
   });
 
@@ -448,6 +454,7 @@ function bindEvents() {
     populateAdminSubsections(normalizedSection);
     toggleInsumoExtraFields(normalizedSection === "Insumos");
     toggleJarraExtraFields(normalizedSection === "Productos" && el.productCategory.value === "Jarras");
+    toggleProductPriceMode(normalizedSection);
   });
 
   el.productCategory.addEventListener("change", () => {
@@ -538,13 +545,19 @@ function bindEvents() {
     const category = String(formData.get("product-category") || "").trim();
     const description = String(formData.get("product-description") || "").trim();
     const priceValue = Number(formData.get("product-price"));
+    const isPrinterSection = section === "Impresoras 3D";
     const jarraSize = String(formData.get("jarra-size") || "").trim();
     const brand = String(formData.get("insumo-brand") || "").trim();
     const material = String(formData.get("insumo-material") || "").trim();
 
     const files = [...state.pendingProductFiles];
 
-    if (!name || !section || !category || !description || !Number.isFinite(priceValue) || priceValue <= 0) {
+    if (!name || !section || !category || !description) {
+      alert("Completa nombre, seccion, categoria, descripcion y precio correctamente.");
+      return;
+    }
+
+    if (!isPrinterSection && (!Number.isFinite(priceValue) || priceValue <= 0)) {
       alert("Completa nombre, seccion, categoria, descripcion y precio correctamente.");
       return;
     }
@@ -579,7 +592,7 @@ function bindEvents() {
         category: normalizedCategory,
         jarraSize: section === "Productos" && normalizedCategory === "Jarras" ? normalizeJarraSize(jarraSize) : "",
         description,
-        price: Math.round(priceValue),
+        price: isPrinterSection ? 0 : Math.round(priceValue),
         images,
         brand: section === "Insumos" ? brand : "",
         material: section === "Insumos" ? material : "",
@@ -1436,7 +1449,17 @@ function buildProductCard(product) {
   image.dataset.imageIndex = String(validIndex);
   title.textContent = product.name;
   desc.textContent = product.description;
-  price.textContent = formatCurrency(product.price);
+  const isPrinter = normalizeSection(product.section) === "Impresoras 3D";
+  if (isPrinter) {
+    price.textContent = "Solicitar precio y promociones";
+    price.classList.add("product-price-inquiry");
+    addButton.textContent = "Consultar";
+    addButton.dataset.productInquiry = "printer";
+  } else {
+    price.textContent = formatCurrency(product.price);
+    addButton.textContent = "Agregar";
+    delete addButton.dataset.productInquiry;
+  }
 
   addButton.dataset.productId = product.id;
 
@@ -1578,6 +1601,18 @@ function handleProductGridClick(event) {
 
   if (target.matches(".btn-add")) {
     const productId = target.dataset.productId;
+    if (target.dataset.productInquiry === "printer") {
+      const product = state.products.find((item) => item.id === productId);
+      if (product) {
+        const message = `Hola quiero solicitar precio y promociones de ${product.name}.`;
+        const opened = openWhatsAppWithMessage(message);
+        if (opened) {
+          showToast("Te llevamos a WhatsApp para consultar esta impresora", "info");
+        }
+      }
+      return;
+    }
+
     changeQty(productId, 1);
     return;
   }
@@ -1780,11 +1815,13 @@ function renderAdminProducts() {
     row.className = "admin-product-item";
 
     const imageSrc = product.images[0] || "";
+    const isPrinter = normalizeSection(product.section) === "Impresoras 3D";
+    const priceLabel = isPrinter ? "Solicitar precio y promociones" : formatCurrency(product.price);
     row.innerHTML = `
       <img src="${imageSrc}" alt="${escapeHtml(product.name)}" />
       <div>
         <h4>${escapeHtml(product.name)}</h4>
-        <p>${escapeHtml(normalizeSection(product.section))} · ${escapeHtml(product.category)} · ${formatCurrency(product.price)} · ${product.images.length} foto(s)</p>
+        <p>${escapeHtml(normalizeSection(product.section))} · ${escapeHtml(product.category)} · ${escapeHtml(priceLabel)} · ${product.images.length} foto(s)</p>
       </div>
       <div class="admin-item-actions">
         <button class="edit-btn" data-edit-id="${product.id}" type="button">Editar</button>
@@ -1835,6 +1872,19 @@ function handleCheckout() {
 
   const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openWhatsAppWithMessage(message) {
+  const cleanNumber = sanitizeWaNumber(state.waNumber || el.waNumber.value);
+  if (!cleanNumber) {
+    switchView("admin");
+    alert("Primero guarda un numero de WhatsApp en Admin.");
+    return false;
+  }
+
+  const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
 }
 
 function changeQty(productId, delta) {
@@ -2155,6 +2205,10 @@ function renderCatalogDrawerMenu() {
       row.classList.toggle("active", state.activeSection === section);
       el.catalogDrawerList.appendChild(row);
     });
+
+    const quoteRow = buildCatalogDrawerRow("Solicitar cotizacion", "quote", {}, false);
+    quoteRow.classList.add("catalog-drawer-item-cta");
+    el.catalogDrawerList.appendChild(quoteRow);
     return;
   }
 
@@ -2212,6 +2266,14 @@ function buildCatalogDrawerRow(label, action, data = {}, showChevron = true) {
   }
 
   return button;
+}
+
+function handleCatalogQuoteRequest() {
+  const opened = openWhatsAppWithMessage("Hola quiero solicitar una cotizacion sobre...");
+  if (opened) {
+    closeCatalogMenuAfterFilterSelect();
+    showToast("Abrimos WhatsApp para tu cotizacion", "success");
+  }
 }
 
 function persistProducts() {
@@ -2369,6 +2431,17 @@ function toggleJarraExtraFields(show) {
   }
 }
 
+function toggleProductPriceMode(section) {
+  const isPrinter = normalizeSection(section) === "Impresoras 3D";
+  el.productPrice.required = !isPrinter;
+  el.productPrice.min = isPrinter ? "0" : "1";
+  el.productPrice.placeholder = isPrinter ? "Solicitar precio y promociones" : "";
+
+  if (isPrinter && !el.productPrice.value) {
+    el.productPrice.value = "0";
+  }
+}
+
 function normalizeSubsection(section, subsection) {
   const normalizedSection = normalizeSection(section);
   const options = getSubsectionsBySection(section);
@@ -2491,6 +2564,7 @@ function resetProductForm() {
   populateAdminSubsections(normalizeSection(el.productSection.value));
   toggleJarraExtraFields(false);
   toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
+  toggleProductPriceMode(normalizeSection(el.productSection.value));
   renderProductImageCount();
   updateProductFormMode();
 }
@@ -2516,6 +2590,7 @@ function startProductEdit(productId) {
 
   toggleInsumoExtraFields(targetProduct.section === "Insumos");
   toggleJarraExtraFields(targetProduct.section === "Productos" && targetProduct.category === "Jarras");
+  toggleProductPriceMode(targetProduct.section);
 
   el.productImagePreview.innerHTML = "";
   renderImagePreviewFromUrls(targetProduct.images, el.productImagePreview);
