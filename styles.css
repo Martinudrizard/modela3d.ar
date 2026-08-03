@@ -316,7 +316,7 @@ main {
 }
 
 .catalog-menu-toggle {
-  display: inline-flex;
+  display: none;
   border: 0;
   background: transparent;
   color: #555;
@@ -348,6 +348,10 @@ main {
 .catalog-menu-toggle.active {
   color: #fff;
   background: #111;
+}
+
+.shop-desktop-btn {
+  display: inline-flex;
 }
 
 .catalog-menu-panel {
@@ -1386,6 +1390,10 @@ body.modal-open {
     display: inline-flex;
     min-width: 120px;
     justify-content: center;
+  }
+
+  .shop-desktop-btn {
+    display: none;
   }
 
   .catalog-menu-panel {

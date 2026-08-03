@@ -33,7 +33,7 @@ const IMAGE_UPLOAD_CONFIG = {
 const SHOP_SECTIONS = ["Productos", "Insumos", "Impresoras 3D"];
 const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes"];
 const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
-const IMPRESORAS_SUBSECTIONS = ["FDM", "Resina", "Profesional"];
+const IMPRESORAS_SUBSECTIONS = ["Impresora 3D"];
 const JARRA_SIZES = ["500ml", "1 litro"];
 
 const SECTION_SUBSECTIONS = {
@@ -2437,8 +2437,8 @@ function toggleProductPriceMode(section) {
   el.productPrice.min = isPrinter ? "0" : "1";
   el.productPrice.placeholder = isPrinter ? "Solicitar precio y promociones" : "";
 
-  if (isPrinter && !el.productPrice.value) {
-    el.productPrice.value = "0";
+  if (isPrinter && el.productPrice.value === "0") {
+    el.productPrice.value = "";
   }
 }
 
@@ -2583,7 +2583,10 @@ function startProductEdit(productId) {
   el.productSection.value = targetProduct.section;
   populateAdminSubsections(targetProduct.section, targetProduct.category);
   el.productDescription.value = targetProduct.description;
-  el.productPrice.value = String(targetProduct.price);
+  el.productPrice.value =
+    normalizeSection(targetProduct.section) === "Impresoras 3D"
+      ? ""
+      : String(targetProduct.price);
   el.insumoBrand.value = targetProduct.brand || "";
   el.insumoMaterial.value = targetProduct.material || "";
   el.jarraSize.value = normalizeJarraSize(targetProduct.jarraSize || "500ml");
