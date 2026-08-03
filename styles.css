@@ -199,6 +199,22 @@ main {
   max-width: 14ch;
 }
 
+.hero-title {
+  position: relative;
+  color: #b80f16;
+  text-shadow: 0 8px 22px rgba(184, 15, 22, 0.22);
+}
+
+.hero-title::after {
+  content: "";
+  display: block;
+  width: clamp(120px, 45%, 210px);
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d71920, rgba(215, 25, 32, 0.18));
+}
+
 .hero p {
   margin: 0;
   color: #bf1f27;
@@ -1375,8 +1391,8 @@ body.modal-open {
     z-index: 62;
     border-left: 1px solid #e6e6e6;
     box-shadow: -18px 0 38px rgba(0, 0, 0, 0.2);
-    display: grid;
-    gap: 0;
+    display: flex;
+    flex-direction: column;
     max-height: none;
     opacity: 1;
     overflow: auto;
@@ -1409,7 +1425,7 @@ body.modal-open {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    padding: 14px 16px;
+    padding: 10px 12px;
     border-bottom: 1px solid #ececec;
     position: sticky;
     top: 0;
@@ -1434,11 +1450,16 @@ body.modal-open {
 
   .catalog-menu-title {
     display: block;
-    margin-left: 10px;
-    font-size: 1.15rem;
+    margin-left: 0;
+    font-size: 1.1rem;
     font-weight: 700;
     color: #111;
     flex: 1;
+    text-align: left;
+  }
+
+  .catalog-menu-back:not(.hidden-block) {
+    margin-right: 10px;
   }
 
   .catalog-menu-close {
@@ -1462,6 +1483,7 @@ body.modal-open {
 
   .catalog-drawer-list {
     display: grid;
+    align-content: start;
   }
 
   .catalog-drawer-item {
@@ -1470,7 +1492,7 @@ body.modal-open {
     border-bottom: 1px solid #efefef;
     background: #fff;
     color: #111;
-    padding: 16px;
+    padding: 14px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1480,10 +1502,10 @@ body.modal-open {
   }
 
   .catalog-drawer-text {
-    font-size: 2rem;
+    font-size: 1.7rem;
     font-family: "Bebas Neue", sans-serif;
-    letter-spacing: 0.8px;
-    line-height: 1.05;
+    letter-spacing: 0.6px;
+    line-height: 1;
   }
 
   .catalog-drawer-chevron {
@@ -1514,6 +1536,11 @@ body.modal-open {
   .hero h2 {
     max-width: 14ch;
     font-size: clamp(1.8rem, 10vw, 2.4rem);
+  }
+
+  .hero-title::after {
+    margin-top: 8px;
+    width: 120px;
   }
 
   .hero-copy {
