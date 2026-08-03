@@ -31,7 +31,16 @@
 
       <div class="header-actions">
         <nav class="view-switch" aria-label="Cambiar vista">
-          <button class="view-btn active" data-view="shop">Tienda</button>
+          <button
+            id="catalog-menu-toggle"
+            class="view-btn catalog-menu-toggle active"
+            type="button"
+            aria-expanded="false"
+            aria-controls="catalog-menu-panel"
+          >
+            <span class="catalog-menu-icon" aria-hidden="true">☰</span>
+            <span id="catalog-menu-summary" class="catalog-menu-summary">Tienda</span>
+          </button>
           <button class="view-btn" data-view="admin">Admin</button>
         </nav>
 
@@ -68,18 +77,6 @@
         </div>
 
         <section class="catalog-menu" aria-label="Filtros del catalogo">
-          <button
-            id="catalog-menu-toggle"
-            class="catalog-menu-toggle"
-            type="button"
-            aria-expanded="false"
-            aria-controls="catalog-menu-panel"
-          >
-            <span class="catalog-menu-icon" aria-hidden="true">☰</span>
-            <span class="catalog-menu-label">Menu de secciones</span>
-            <span id="catalog-menu-summary" class="catalog-menu-summary">Productos</span>
-          </button>
-
           <div id="catalog-menu-panel" class="catalog-menu-panel">
             <section class="section-filter" aria-label="Filtrar por seccion">
               <h3>Secciones</h3>

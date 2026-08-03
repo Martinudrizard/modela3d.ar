@@ -169,7 +169,7 @@ const state = {
 };
 
 const el = {
-  viewButtons: Array.from(document.querySelectorAll(".view-btn")),
+  viewButtons: Array.from(document.querySelectorAll(".view-btn[data-view]")),
   adminViewButton: document.querySelector('.view-btn[data-view="admin"]'),
   brandLogo: document.getElementById("brand-logo"),
   views: {
@@ -285,6 +285,9 @@ function bindEvents() {
   el.brandLogo.addEventListener("click", handleHiddenAdminTap);
 
   el.catalogMenuToggle?.addEventListener("click", () => {
+    if (state.activeView !== "shop") {
+      switchView("shop");
+    }
     setCatalogMenuOpen(!state.catalogMenuOpen);
   });
 
@@ -1973,9 +1976,11 @@ function updateCatalogMenuSummary() {
     return;
   }
 
-  let summary = state.activeSection;
-  if (state.activeSection !== "Insumos") {
-    summary = `${state.activeSection} · ${state.activeCategory}`;
+  let summary = "Tienda";
+  if (state.activeSection === "Insumos") {
+    summary = "Tienda · Insumos";
+  } else {
+    summary = `Tienda · ${state.activeCategory}`;
     if (state.activeCategory === "Jarras" && state.activeJarraSize !== "Todas") {
       summary = `${summary} · ${state.activeJarraSize}`;
     }
