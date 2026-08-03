@@ -1063,12 +1063,13 @@ button:disabled {
 
 .toast-stack {
   position: fixed;
-  right: 14px;
-  bottom: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 80;
   display: grid;
   gap: 8px;
-  width: min(92vw, 360px);
+  width: min(92vw, 400px);
 }
 
 .toast {
@@ -1299,9 +1300,6 @@ body.modal-open {
   }
 
   .toast-stack {
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    width: auto;
+    width: min(92vw, 360px);
   }
 }
