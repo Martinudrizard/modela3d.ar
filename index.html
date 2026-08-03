@@ -292,6 +292,25 @@
       </div>
     </aside>
 
+    <div
+      id="image-lightbox"
+      class="image-lightbox"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Vista ampliada de imagen"
+    >
+      <button id="lightbox-close" class="lightbox-close" type="button" aria-label="Cerrar imagen ampliada">
+        x
+      </button>
+      <button id="lightbox-prev" class="lightbox-nav lightbox-prev" type="button" aria-label="Imagen anterior">‹</button>
+      <img id="lightbox-image" class="lightbox-image" alt="Imagen ampliada" />
+      <button id="lightbox-next" class="lightbox-nav lightbox-next" type="button" aria-label="Imagen siguiente">›</button>
+      <p id="lightbox-counter" class="lightbox-counter"></p>
+    </div>
+
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
     <template id="product-card-template">
       <article class="product-card">
         <div class="image-wrap">

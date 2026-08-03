@@ -158,6 +158,13 @@ const state = {
   cloudWarningShown: false,
   productImageById: {},
   productImageFetchInFlight: {},
+  lightbox: {
+    images: [],
+    index: 0,
+    label: "",
+    open: false,
+  },
+  toastTimerById: {},
 };
 
 const el = {
@@ -188,6 +195,13 @@ const el = {
   heroNext: document.getElementById("hero-next"),
   heroDots: document.getElementById("hero-dots"),
   heroMedia: document.querySelector(".hero-media"),
+  lightbox: document.getElementById("image-lightbox"),
+  lightboxClose: document.getElementById("lightbox-close"),
+  lightboxPrev: document.getElementById("lightbox-prev"),
+  lightboxNext: document.getElementById("lightbox-next"),
+  lightboxImage: document.getElementById("lightbox-image"),
+  lightboxCounter: document.getElementById("lightbox-counter"),
+  toastStack: document.getElementById("toast-stack"),
   cartPanel: document.querySelector(".cart-panel"),
   cartToggle: document.getElementById("cart-toggle"),
   cartClose: document.getElementById("cart-close"),
@@ -319,6 +333,44 @@ function bindEvents() {
 
   el.heroMedia.addEventListener("mouseenter", stopHeroAutoplay);
   el.heroMedia.addEventListener("mouseleave", startHeroAutoplay);
+
+  el.heroCarouselImage.addEventListener("click", () => {
+    if (!isMobileViewport()) {
+      return;
+    }
+
+    openImageLightbox(state.heroSlides, state.heroSlideIndex, "Producto destacado");
+  });
+
+  el.lightbox.addEventListener("click", (event) => {
+    if (event.target === el.lightbox) {
+      closeImageLightbox();
+    }
+  });
+
+  el.lightboxClose.addEventListener("click", closeImageLightbox);
+  el.lightboxPrev.addEventListener("click", () => stepLightbox(-1));
+  el.lightboxNext.addEventListener("click", () => stepLightbox(1));
+
+  document.addEventListener("keydown", (event) => {
+    if (!state.lightbox.open) {
+      return;
+    }
+
+    if (event.key === "Escape") {
+      closeImageLightbox();
+      return;
+    }
+
+    if (event.key === "ArrowLeft") {
+      stepLightbox(-1);
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      stepLightbox(1);
+    }
+  });
 
   el.productSection.addEventListener("change", () => {
     const normalizedSection = normalizeSection(el.productSection.value);
@@ -1297,6 +1349,8 @@ function buildProductCard(product) {
   }
 
   image.alt = product.name;
+  image.dataset.productId = product.id;
+  image.dataset.imageIndex = String(validIndex);
   title.textContent = product.name;
   desc.textContent = product.description;
   price.textContent = formatCurrency(product.price);
@@ -1425,6 +1479,18 @@ function handleProductGridClick(event) {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
     return;
+  }
+
+  const clickedImage = target.closest(".product-image");
+  if (clickedImage instanceof HTMLImageElement && isMobileViewport()) {
+    const productId = String(clickedImage.dataset.productId || "").trim();
+    const product = state.products.find((item) => item.id === productId);
+    if (product) {
+      const images = Array.isArray(product.images) ? product.images : [];
+      const index = Number(clickedImage.dataset.imageIndex || 0);
+      openImageLightbox(images, index, product.name);
+      return;
+    }
   }
 
   if (target.matches(".btn-add")) {
@@ -1693,6 +1759,11 @@ function changeQty(productId, delta) {
     return;
   }
 
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) {
+    return;
+  }
+
   const current = Number(state.cart[productId] || 0);
   const next = current + delta;
 
@@ -1704,12 +1775,138 @@ function changeQty(productId, delta) {
 
   persistCart();
   renderCart();
+
+  if (delta > 0) {
+    if (current === 0) {
+      showToast(`${product.name} agregado al carrito`, "success");
+    } else {
+      showToast(`Se sumo otra unidad de ${product.name}`, "info");
+    }
+    return;
+  }
+
+  if (current > 0 && next <= 0) {
+    showToast(`${product.name} eliminado del carrito`, "warning");
+  }
 }
 
 function removeFromCart(productId) {
+  const product = state.products.find((item) => item.id === productId);
+  const hadProduct = Number(state.cart[productId] || 0) > 0;
   delete state.cart[productId];
   persistCart();
   renderCart();
+
+  if (hadProduct && product) {
+    showToast(`${product.name} eliminado del carrito`, "warning");
+  }
+}
+
+function openImageLightbox(images, startIndex = 0, label = "") {
+  const safeImages = Array.isArray(images)
+    ? images.filter((image) => typeof image === "string" && image.trim())
+    : [];
+
+  if (!safeImages.length) {
+    return;
+  }
+
+  const maxIndex = safeImages.length - 1;
+  const normalizedIndex = Number.isFinite(startIndex)
+    ? Math.max(0, Math.min(startIndex, maxIndex))
+    : 0;
+
+  state.lightbox.images = safeImages;
+  state.lightbox.index = normalizedIndex;
+  state.lightbox.label = String(label || "").trim();
+  state.lightbox.open = true;
+
+  renderLightboxFrame();
+  el.lightbox.classList.add("open");
+  el.lightbox.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+
+function closeImageLightbox() {
+  state.lightbox.open = false;
+  el.lightbox.classList.remove("open");
+  el.lightbox.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
+function stepLightbox(delta) {
+  const images = state.lightbox.images;
+  if (!Array.isArray(images) || images.length <= 1) {
+    return;
+  }
+
+  const nextIndex = (state.lightbox.index + delta + images.length) % images.length;
+  state.lightbox.index = nextIndex;
+  renderLightboxFrame();
+}
+
+function renderLightboxFrame() {
+  const images = state.lightbox.images;
+  if (!Array.isArray(images) || !images.length) {
+    return;
+  }
+
+  const current = images[state.lightbox.index] || images[0];
+  el.lightboxImage.src = current;
+  const label = state.lightbox.label || "Imagen";
+  el.lightboxImage.alt = `${label} ampliada`;
+  el.lightboxCounter.textContent = `${state.lightbox.index + 1} / ${images.length}`;
+
+  const hasMany = images.length > 1;
+  el.lightboxPrev.classList.toggle("hidden-block", !hasMany);
+  el.lightboxNext.classList.toggle("hidden-block", !hasMany);
+}
+
+function showToast(message, type = "info") {
+  if (!el.toastStack) {
+    return;
+  }
+
+  const toast = document.createElement("article");
+  const toastId = `t_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  toast.className = `toast toast-${type}`;
+  toast.dataset.toastId = toastId;
+
+  toast.innerHTML = `
+    <p>${escapeHtml(message)}</p>
+    <button type="button" class="toast-close" aria-label="Cerrar aviso">x</button>
+  `;
+
+  const closeButton = toast.querySelector(".toast-close");
+  closeButton?.addEventListener("click", () => removeToast(toastId));
+
+  el.toastStack.appendChild(toast);
+
+  state.toastTimerById[toastId] = window.setTimeout(() => {
+    removeToast(toastId);
+  }, 2600);
+}
+
+function removeToast(toastId) {
+  const node = el.toastStack.querySelector(`[data-toast-id="${toastId}"]`);
+  if (!node) {
+    return;
+  }
+
+  node.classList.add("toast-out");
+  window.setTimeout(() => {
+    node.remove();
+  }, 180);
+
+  const timerId = state.toastTimerById[toastId];
+  if (timerId) {
+    window.clearTimeout(timerId);
+    delete state.toastTimerById[toastId];
+  }
+}
+
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 760px)").matches;
 }
 
 function persistProducts() {

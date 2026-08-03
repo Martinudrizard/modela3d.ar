@@ -987,7 +987,153 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(10, 10, 10, 0.9);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.image-lightbox.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lightbox-image {
+  width: min(92vw, 720px);
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lightbox-nav,
+.lightbox-close {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.38);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.lightbox-close {
+  top: 16px;
+  right: 16px;
+  font-size: 1rem;
+}
+
+.lightbox-nav {
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+}
+
+.lightbox-prev {
+  left: 14px;
+}
+
+.lightbox-next {
+  right: 14px;
+}
+
+.lightbox-counter {
+  position: absolute;
+  bottom: 14px;
+  margin: 0;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+}
+
+.toast-stack {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 80;
+  display: grid;
+  gap: 8px;
+  width: min(92vw, 360px);
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  animation: toast-in 180ms ease;
+}
+
+.toast p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #1d1d1d;
+}
+
+.toast-success {
+  border-left: 4px solid #198754;
+}
+
+.toast-info {
+  border-left: 4px solid #0d6efd;
+}
+
+.toast-warning {
+  border-left: 4px solid #dc3545;
+}
+
+.toast-close {
+  border: 0;
+  background: transparent;
+  color: #444;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.toast-out {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
 @keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-in {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -1127,5 +1273,35 @@ button:disabled {
   .admin-product-item img {
     width: 58px;
     height: 58px;
+  }
+
+  .product-image,
+  .hero-carousel-image {
+    cursor: zoom-in;
+  }
+
+  .lightbox-image {
+    width: 94vw;
+    max-height: 74vh;
+  }
+
+  .lightbox-nav {
+    width: 36px;
+    height: 36px;
+  }
+
+  .lightbox-prev {
+    left: 10px;
+  }
+
+  .lightbox-next {
+    right: 10px;
+  }
+
+  .toast-stack {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
   }
 }
