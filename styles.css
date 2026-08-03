@@ -295,6 +295,50 @@ main {
   background: #c3131b;
 }
 
+.catalog-menu {
+  margin-top: 14px;
+}
+
+.catalog-menu-toggle {
+  display: none;
+  width: 100%;
+  border: 1px solid #1f1f1f;
+  border-radius: 12px;
+  background: #111;
+  color: #fff;
+  padding: 10px 12px;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.catalog-menu-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.catalog-menu-label {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.catalog-menu-summary {
+  margin-left: auto;
+  color: #ffb8bd;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 42%;
+}
+
+.catalog-menu-panel {
+  display: block;
+}
+
 .category-filter {
   margin-top: 16px;
   background: #fff;
@@ -1303,6 +1347,32 @@ body.modal-open {
     padding: 14px;
   }
 
+  .catalog-menu-toggle {
+    display: flex;
+  }
+
+  .catalog-menu-panel {
+    display: grid;
+    gap: 0;
+    max-height: 1200px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 220ms ease, opacity 200ms ease, transform 200ms ease;
+    transform: translateY(0);
+  }
+
+  .catalog-menu-panel.collapsed {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+  }
+
+  .catalog-menu-toggle.open {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+  }
+
   .hero-media {
     width: 100%;
     min-width: 0;
@@ -1322,6 +1392,11 @@ body.modal-open {
   .products-grid {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .catalog-menu .section-filter,
+  .catalog-menu .category-filter {
+    margin-top: 10px;
   }
 
   .insumos-results-head {

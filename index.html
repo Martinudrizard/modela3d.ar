@@ -67,19 +67,35 @@
           </div>
         </div>
 
-        <section class="section-filter" aria-label="Filtrar por seccion">
-          <h3>Secciones</h3>
-          <div id="section-chips" class="chips section-chips"></div>
-        </section>
+        <section class="catalog-menu" aria-label="Filtros del catalogo">
+          <button
+            id="catalog-menu-toggle"
+            class="catalog-menu-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="catalog-menu-panel"
+          >
+            <span class="catalog-menu-icon" aria-hidden="true">☰</span>
+            <span class="catalog-menu-label">Menu de secciones</span>
+            <span id="catalog-menu-summary" class="catalog-menu-summary">Productos</span>
+          </button>
 
-        <section id="product-subsection-filter" class="category-filter" aria-label="Subsecciones de productos">
-          <h3 id="product-subsection-title">Productos</h3>
-          <div id="product-subsection-chips" class="chips"></div>
-        </section>
+          <div id="catalog-menu-panel" class="catalog-menu-panel">
+            <section class="section-filter" aria-label="Filtrar por seccion">
+              <h3>Secciones</h3>
+              <div id="section-chips" class="chips section-chips"></div>
+            </section>
 
-        <section id="jarra-size-filter" class="category-filter hidden-block" aria-label="Filtrar jarras por capacidad">
-          <h3>Capacidad de jarras</h3>
-          <div id="jarra-size-chips" class="chips"></div>
+            <section id="product-subsection-filter" class="category-filter" aria-label="Subsecciones de productos">
+              <h3 id="product-subsection-title">Productos</h3>
+              <div id="product-subsection-chips" class="chips"></div>
+            </section>
+
+            <section id="jarra-size-filter" class="category-filter hidden-block" aria-label="Filtrar jarras por capacidad">
+              <h3>Capacidad de jarras</h3>
+              <div id="jarra-size-chips" class="chips"></div>
+            </section>
+          </div>
         </section>
 
         <section id="insumos-shell" class="insumos-shell" aria-label="Filtros de insumos">

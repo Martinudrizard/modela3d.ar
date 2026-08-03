@@ -164,6 +164,7 @@ const state = {
     label: "",
     open: false,
   },
+  catalogMenuOpen: false,
   toastTimerById: {},
 };
 
@@ -175,6 +176,9 @@ const el = {
     shop: document.getElementById("shop-view"),
     admin: document.getElementById("admin-view"),
   },
+  catalogMenuToggle: document.getElementById("catalog-menu-toggle"),
+  catalogMenuPanel: document.getElementById("catalog-menu-panel"),
+  catalogMenuSummary: document.getElementById("catalog-menu-summary"),
   sectionChips: document.getElementById("section-chips"),
   productSubsectionFilter: document.getElementById("product-subsection-filter"),
   productSubsectionTitle: document.getElementById("product-subsection-title"),
@@ -267,6 +271,7 @@ async function init() {
   setCartOpen(false);
 
   bindEvents();
+  setCatalogMenuOpen(false, true);
   renderAll();
 
   await hydrateFromCloud();
@@ -278,6 +283,14 @@ function bindEvents() {
   });
 
   el.brandLogo.addEventListener("click", handleHiddenAdminTap);
+
+  el.catalogMenuToggle?.addEventListener("click", () => {
+    setCatalogMenuOpen(!state.catalogMenuOpen);
+  });
+
+  window.addEventListener("resize", () => {
+    setCatalogMenuOpen(state.catalogMenuOpen, true);
+  });
 
   el.cartToggle.addEventListener("click", () => {
     setCartOpen(!el.cartPanel.classList.contains("open"));
@@ -1178,10 +1191,13 @@ function renderSectionChips() {
       renderInsumosFilterPanel();
       updateCatalogVisibility();
       renderProducts();
+      closeCatalogMenuAfterFilterSelect();
     });
 
     el.sectionChips.appendChild(button);
   });
+
+  updateCatalogMenuSummary();
 }
 
 function renderProductSubsectionChips() {
@@ -1211,9 +1227,12 @@ function renderProductSubsectionChips() {
       renderProductSubsectionChips();
       renderJarraSizeChips();
       renderProducts();
+      closeCatalogMenuAfterFilterSelect();
     });
     el.productSubsectionChips.appendChild(button);
   });
+
+  updateCatalogMenuSummary();
 }
 
 function renderJarraSizeChips() {
@@ -1239,9 +1258,12 @@ function renderJarraSizeChips() {
       state.activeJarraSize = size;
       renderJarraSizeChips();
       renderProducts();
+      closeCatalogMenuAfterFilterSelect();
     });
     el.jarraSizeChips.appendChild(button);
   });
+
+  updateCatalogMenuSummary();
 }
 
 function updateCatalogVisibility() {
@@ -1919,6 +1941,47 @@ function removeToast(toastId) {
 
 function isMobileViewport() {
   return window.matchMedia("(max-width: 760px)").matches;
+}
+
+function setCatalogMenuOpen(isOpen, force = false) {
+  if (!el.catalogMenuPanel || !el.catalogMenuToggle) {
+    return;
+  }
+
+  const shouldCollapse = isMobileViewport();
+  state.catalogMenuOpen = shouldCollapse ? Boolean(isOpen) : true;
+
+  const isExpanded = state.catalogMenuOpen;
+  el.catalogMenuPanel.classList.toggle("open", isExpanded);
+  el.catalogMenuPanel.classList.toggle("collapsed", shouldCollapse && !isExpanded);
+  el.catalogMenuToggle.classList.toggle("open", isExpanded);
+  el.catalogMenuToggle.setAttribute("aria-expanded", String(isExpanded));
+  el.catalogMenuToggle.hidden = !shouldCollapse;
+  updateCatalogMenuSummary();
+}
+
+function closeCatalogMenuAfterFilterSelect() {
+  if (!isMobileViewport()) {
+    return;
+  }
+
+  setCatalogMenuOpen(false);
+}
+
+function updateCatalogMenuSummary() {
+  if (!el.catalogMenuSummary) {
+    return;
+  }
+
+  let summary = state.activeSection;
+  if (state.activeSection !== "Insumos") {
+    summary = `${state.activeSection} · ${state.activeCategory}`;
+    if (state.activeCategory === "Jarras" && state.activeJarraSize !== "Todas") {
+      summary = `${summary} · ${state.activeJarraSize}`;
+    }
+  }
+
+  el.catalogMenuSummary.textContent = summary;
 }
 
 function persistProducts() {
