@@ -1867,13 +1867,25 @@ function showToast(message, type = "info") {
     return;
   }
 
+  const metaByType = {
+    success: { icon: "✓", title: "Listo" },
+    info: { icon: "i", title: "Actualizacion" },
+    warning: { icon: "!", title: "Atencion" },
+  };
+
+  const meta = metaByType[type] || metaByType.info;
+
   const toast = document.createElement("article");
   const toastId = `t_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   toast.className = `toast toast-${type}`;
   toast.dataset.toastId = toastId;
 
   toast.innerHTML = `
-    <p>${escapeHtml(message)}</p>
+    <span class="toast-icon" aria-hidden="true">${meta.icon}</span>
+    <div class="toast-body">
+      <strong class="toast-title">${meta.title}</strong>
+      <p>${escapeHtml(message)}</p>
+    </div>
     <button type="button" class="toast-close" aria-label="Cerrar aviso">x</button>
   `;
 
