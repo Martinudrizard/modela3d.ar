@@ -1435,6 +1435,8 @@ function buildProductCard(product) {
   const prevButton = fragment.querySelector(".product-prev");
   const nextButton = fragment.querySelector(".product-next");
   const controls = fragment.querySelector(".image-controls");
+  const sectionTag = fragment.querySelector(".product-tag-section");
+  const categoryTag = fragment.querySelector(".product-tag-category");
   const title = fragment.querySelector(".product-title");
   const desc = fragment.querySelector(".product-desc");
   const price = fragment.querySelector(".product-price");
@@ -1457,9 +1459,12 @@ function buildProductCard(product) {
   image.alt = product.name;
   image.dataset.productId = product.id;
   image.dataset.imageIndex = String(validIndex);
+  sectionTag.textContent = normalizeSection(product.section);
+  categoryTag.textContent = product.category || "Catalogo";
   title.textContent = product.name;
   desc.textContent = product.description;
   const isPrinter = normalizeSection(product.section) === "Impresoras 3D";
+  price.classList.remove("product-price-inquiry");
   if (isPrinter) {
     price.textContent = "Solicitar precio y promociones";
     price.classList.add("product-price-inquiry");
