@@ -290,7 +290,10 @@ function bindEvents() {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
-  el.brandLogo.addEventListener("click", handleHiddenAdminTap);
+  el.brandLogo.addEventListener("click", () => {
+    scrollToHeader();
+    handleHiddenAdminTap();
+  });
 
   el.catalogMenuToggle?.addEventListener("click", () => {
     if (state.activeView !== "shop") {
@@ -854,6 +857,13 @@ function handleHiddenAdminTap() {
     state.logoTapTimerId = null;
     void attemptAdminUnlock();
   }
+}
+
+function scrollToHeader() {
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
 }
 
 async function attemptAdminUnlock() {
