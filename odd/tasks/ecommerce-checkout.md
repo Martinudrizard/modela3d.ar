@@ -54,8 +54,9 @@ Turn the current WhatsApp-only cart into an authenticated purchase flow with ser
 - 2026-10-04: User supplied store origin postal code 3265.
 - 2026-10-04: User obtained Mercado Pago Checkout Pro test credentials and a buyer test account; the Access Token remains private and is not configured in Netlify.
 - 2026-10-04: Writer observed RED then GREEN; parent reran `node --test tests/*.test.js` with 16/16 passing. Writer also reports both function syntax checks and `git diff --check` passed.
-- 2026-10-04: User disabled RDD for this clone only and selected `feature-branch-chain`; global RDD remains on. No native reviewer was run. The branch still contains the active, unreviewed EC-1 candidate; ordinary test verification is required.
-- 2026-10-04: `node --test tests/*.test.js` passed 16/16 on parent rerun. Writer reports both Netlify function syntax checks and `git diff --check` passed.
+- 2026-10-04: User disabled RDD for this clone only and selected `feature-branch-chain`; global RDD remains on. Native review was not completed at the user's request; use ordinary focused tests for this feature.
+- 2026-10-04: Auth slice committed as `13cce87` (`feat(auth): add Google customer identity`); `node --test tests/customer-auth.test.js` passed 5/5.
+- 2026-10-04: Order slice `node --test tests/orders.test.js` passed 11/11; function syntax checks and `git diff --check` passed. Order slice remains uncommitted.
 
 ## Next Step
-Finish EC-1 ordinary verification and work-unit commit on the feature branch. Then implement EC-2 with mocked provider tests while carrier contracts remain unavailable; do not claim live quotes until official docs and credentials arrive.
+Finish EC-1 with the draft-order work-unit commit. Then implement EC-2 with mocked provider tests while carrier contracts remain unavailable; do not claim live quotes until official docs and credentials arrive.

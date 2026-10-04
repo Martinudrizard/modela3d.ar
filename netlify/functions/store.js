@@ -246,6 +246,10 @@ async function readMergedProducts(store) {
   return Array.from(byId.values());
 }
 
+async function readCatalogProducts(store) {
+  return readMergedProducts(store);
+}
+
 async function readProductImage(store, productId) {
   const id = String(productId || "").trim();
   if (!id) {
@@ -388,3 +392,6 @@ function isAuthorized(event) {
 
   return String(provided).trim() === String(expected).trim();
 }
+
+exports.readCatalogProducts = readCatalogProducts;
+exports.resolveStore = resolveStore;
