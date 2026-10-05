@@ -26,6 +26,7 @@ Turn the current WhatsApp-only cart into an authenticated purchase flow with ser
 - New: `netlify/functions/`, `tests/`, `.env.example`.
 - This task does not authorize remote deployment, Netlify environment changes, provider account creation, or use of credentials.
 - The user requested eventual production on `modela3dar.netlify.app`; deployment remains pending because no remote credential/session was authorized.
+- User authorized updating the public `@netlify/blobs` dependency from npmjs.com for this local branch only; no credentials or Netlify settings may be accessed.
 
 ## Delivery and Routing
 - Feature branch: `feat/ecommerce-checkout` (created from `main`).
@@ -34,14 +35,14 @@ Turn the current WhatsApp-only cart into an authenticated purchase flow with ser
 - No repository skill registry exists. Loaded applicable user skills: `work-unit-commits` and `chained-pr`.
 
 ## Tasks and Acceptance Criteria
-- [ ] EC-1 (in progress): Add isolated order storage and Google-authenticated customer identity. Orders are stored under a dedicated namespace; current products and admin mutations remain unchanged. Server endpoints reject missing/invalid Google ID tokens with an audience check.
-- [ ] EC-2: Add carrier rate adapters and package/origin data. Rates are generated from validated server-side package and postal-code inputs. Carrier errors or missing configuration are explicit; no guessed/fallback prices. The origin postal code is 3265; block final API verification until official Correo Argentino docs and carrier credentials are available.
-- [ ] EC-3: Add secure Mercado Pago Checkout Pro and webhook handling. Prices are loaded from the server's product catalog; client totals are ignored. Verify webhook signatures, retrieve payment state from Mercado Pago, and make repeated notifications idempotent.
+- [x] EC-1: Add isolated order storage and Google-authenticated customer identity. Orders are stored under a dedicated namespace; current products and admin mutations remain unchanged. Server endpoints reject missing/invalid Google ID tokens with an audience check. Verified by 5 auth tests and 11 order tests; commits `13cce87` and `a08a8e7`.
+- [ ] EC-2 (blocked): Add carrier rate adapters and package/origin data. Rates are generated from validated server-side package and postal-code inputs. Carrier errors or missing configuration are explicit; no guessed/fallback prices. The origin postal code is 3265; wait for official Correo Argentino docs and carrier credentials before implementing provider contracts.
+- [ ] EC-3 (in progress): Add secure Mercado Pago Checkout Pro and webhook handling. Prices are loaded from the server's product catalog; client totals are ignored. Verify webhook signatures, retrieve payment state from Mercado Pago, and make repeated notifications idempotent. Each order may create at most one stable Checkout Pro preference, persisted with a `pending` transition and reused on repeated requests; payment-state updates use conditional compare-and-swap writes, reject overwriting conflicting approvals, and record a minimal conflict audit. No credentials or live API calls were used.
 - [ ] EC-4: Connect authenticated checkout UI, address capture, carrier-choice display, and payment redirect. Existing catalog/admin/product data and WhatsApp quote behavior continue working.
 - [ ] EC-5: Add focused tests and configuration/setup documentation. Provide a sandbox verification path and list unavailable live checks accurately.
 
 ## Applicable Checks
-- Baseline: `package.json` currently has no test script/test framework; no deterministic purchase-flow tests exist. Add a focused `node --test` suite and package script as part of behavior tasks.
+- Initial baseline (before checkout implementation): `package.json` had no test script/test framework and no deterministic purchase-flow tests. Current coverage runs through `npm test`/`node --test` and includes purchase, order, and payment-concurrency cases.
 - Per task: focused `npm test`/`node --test` tests; syntax checks for changed Netlify Functions; verify catalog read/write behavior remains isolated from order storage.
 - Final: sandbox checkout/payment scenario and shipping API QA scenarios only when credentials and official documentation are available. No production deploy or live purchase without explicit authorization.
 
@@ -56,7 +57,12 @@ Turn the current WhatsApp-only cart into an authenticated purchase flow with ser
 - 2026-10-04: Writer observed RED then GREEN; parent reran `node --test tests/*.test.js` with 16/16 passing. Writer also reports both function syntax checks and `git diff --check` passed.
 - 2026-10-04: User disabled RDD for this clone only and selected `feature-branch-chain`; global RDD remains on. Native review was not completed at the user's request; use ordinary focused tests for this feature.
 - 2026-10-04: Auth slice committed as `13cce87` (`feat(auth): add Google customer identity`); `node --test tests/customer-auth.test.js` passed 5/5.
-- 2026-10-04: Order slice `node --test tests/orders.test.js` passed 11/11; function syntax checks and `git diff --check` passed. Order slice remains uncommitted.
+- 2026-10-04: Order slice committed as `a08a8e7` (`feat(orders): persist authenticated draft orders`); `node --test tests/orders.test.js` passed 11/11. Function syntax checks and `git diff --check` passed.
+- 2026-10-04: EC-3 preference slice committed as `c8cbd4e` (`feat(payments): create idempotent checkout preferences`); `node --test tests/mercado-pago-payment.test.js` passed 14/14.
+- 2026-10-04: EC-3 uses the installed Mercado Pago SDK 3.6.1 Preference/Payment clients and official webhook signature validator. Focused tests passed 16/16; full tests passed 32/32; both function syntax checks and `git diff --check` passed. No live credentials or API requests were used.
+- 2026-10-04: Bounded EC-3 correction adds per-order preference idempotency, persists/reuses pending preferences, and permits validated pending orders to become paid. RED was observed before implementation; the focused suite passed 24/24 and the complete suite passed 40/40, with both function syntax checks and `git diff --check` passing. EC-3 remains incomplete pending the broader feature acceptance work.
+- 2026-10-04: Independent read-only verification found concurrent webhook callbacks can race while rewriting an order. User authorized updating `@netlify/blobs` locally because installed v8.1.0 lacks conditional writes.
+- 2026-10-04: Bounded EC-3 concurrency correction uses Blobs 11.1.3 strong ETag reads and conditional writes for both order transitions and pending preferences. Same-payment races now produce one order write and an idempotent replay; distinct approvals preserve the winner and create a create-only conflict record containing only order/payment IDs. RED was observed first; focused tests passed 27/27, writer full tests passed 43/43, parent reran `npm test` and passed 43/43. All three function syntax checks and `git diff --check` passed. No credentials, live API calls, or remote settings were used; commit is pending.
 
 ## Next Step
-Finish EC-1 with the draft-order work-unit commit. Then implement EC-2 with mocked provider tests while carrier contracts remain unavailable; do not claim live quotes until official docs and credentials arrive.
+Finish EC-3 with the webhook/CAS work-unit commit, then connect EC-4 checkout UI. Resume EC-2 carrier adapters only after official Correo Argentino docs and both carriers' QA credentials are available; no live rates before then. Complete EC-5 setup documentation and sandbox verification only after its required credentials are configured through authorized secret settings.
