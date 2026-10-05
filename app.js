@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
 };
 
 const CLOUD_ENDPOINT = "/.netlify/functions/store";
+const CUSTOMER_AUTH_ENDPOINT = "/.netlify/functions/customer-auth";
 const CLOUD_KEYS = {
   products: "products",
   heroSlides: "heroSlides",
@@ -16,6 +17,7 @@ const CLOUD_PRODUCT_MUTATION_KEY = "__products_mutation";
 
 const CLOUD_TIMEOUT_MS = 90000;
 const HERO_MAX_IMAGES = 6;
+let googleIdentityServicesPromise = null;
 
 const IMAGE_UPLOAD_CONFIG = {
   product: {
@@ -168,6 +170,14 @@ const state = {
   catalogDrawerMode: "root",
   catalogDrawerSection: "",
   toastTimerById: {},
+  checkout: {
+    open: false,
+    idToken: "",
+    customer: null,
+    address: {},
+    googleClientId: "",
+    authAttempt: 0,
+  },
 };
 
 const el = {
@@ -220,7 +230,16 @@ const el = {
   cartTotal: document.getElementById("cart-total"),
   cartCountBadge: document.getElementById("cart-count-badge"),
   cartToggleCount: document.getElementById("cart-toggle-count"),
+  checkoutStartBtn: document.getElementById("checkout-start-btn"),
   checkoutBtn: document.getElementById("checkout-btn"),
+  checkoutOverlay: document.getElementById("checkout-overlay"),
+  checkoutDialog: document.getElementById("checkout-dialog"),
+  checkoutClose: document.getElementById("checkout-close"),
+  checkoutCancel: document.getElementById("checkout-cancel"),
+  checkoutAuthStatus: document.getElementById("checkout-auth-status"),
+  checkoutCustomerName: document.getElementById("checkout-customer-name"),
+  googleSignInButton: document.getElementById("google-signin-button"),
+  checkoutAddressForm: document.getElementById("checkout-address-form"),
   waNumber: document.getElementById("wa-number"),
   saveWaBtn: document.getElementById("save-wa"),
   productForm: document.getElementById("product-form"),
@@ -358,6 +377,16 @@ function bindEvents() {
     setCartOpen(false);
   });
 
+  el.checkoutStartBtn.addEventListener("click", openCheckoutDialog);
+  el.checkoutClose.addEventListener("click", closeCheckoutDialog);
+  el.checkoutCancel.addEventListener("click", closeCheckoutDialog);
+  el.checkoutOverlay.addEventListener("click", (event) => {
+    if (event.target === el.checkoutOverlay) {
+      closeCheckoutDialog();
+    }
+  });
+  el.checkoutAddressForm.addEventListener("input", updateCheckoutAddress);
+
   document.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Node)) {
@@ -424,6 +453,18 @@ function bindEvents() {
   el.lightboxNext.addEventListener("click", () => stepLightbox(1));
 
   document.addEventListener("keydown", (event) => {
+    if (state.checkout.open) {
+      if (event.key === "Escape") {
+        closeCheckoutDialog();
+        return;
+      }
+
+      if (event.key === "Tab") {
+        keepCheckoutFocusInside(event);
+      }
+      return;
+    }
+
     if (event.key === "Escape" && state.catalogMenuOpen) {
       if (state.catalogDrawerMode !== "root") {
         navigateCatalogDrawerBack();
@@ -813,6 +854,174 @@ function bindEvents() {
 function setCartOpen(isOpen) {
   el.cartPanel.classList.toggle("open", isOpen);
   el.cartToggle.setAttribute("aria-expanded", String(isOpen));
+}
+
+function openCheckoutDialog() {
+  if (!Object.keys(state.cart).length) {
+    return;
+  }
+
+  state.checkout.open = true;
+  const requestId = ++state.checkout.authAttempt;
+  setCartOpen(false);
+  el.checkoutOverlay.hidden = false;
+  document.body.classList.add("checkout-open");
+  el.checkoutAuthStatus.textContent = "Conectando con Google…";
+  el.checkoutClose.focus();
+  void prepareGoogleSignIn(requestId);
+}
+
+function closeCheckoutDialog() {
+  if (!state.checkout.open) {
+    return;
+  }
+
+  state.checkout.open = false;
+  state.checkout.authAttempt += 1;
+  state.checkout.idToken = "";
+  state.checkout.customer = null;
+  state.checkout.address = {};
+  el.checkoutAddressForm.reset();
+  el.googleSignInButton.replaceChildren();
+  el.checkoutCustomerName.textContent = "";
+  el.checkoutCustomerName.hidden = true;
+  el.checkoutAuthStatus.textContent = "Iniciá sesión para continuar.";
+  el.checkoutOverlay.hidden = true;
+  document.body.classList.remove("checkout-open");
+  el.cartToggle.focus();
+}
+
+async function prepareGoogleSignIn(requestId) {
+  try {
+    if (!state.checkout.googleClientId) {
+      const response = await fetch(CUSTOMER_AUTH_ENDPOINT);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.clientId) {
+        throw new Error(response.status === 503
+          ? "El inicio con Google no está configurado todavía."
+          : "No se pudo iniciar el servicio de Google.");
+      }
+      state.checkout.googleClientId = payload.clientId;
+    }
+
+    await loadGoogleIdentityServices();
+    if (!state.checkout.open || requestId !== state.checkout.authAttempt) {
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: state.checkout.googleClientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+    });
+    window.google.accounts.id.renderButton(el.googleSignInButton, {
+      theme: "outline",
+      size: "large",
+      text: "signin_with",
+      shape: "rectangular",
+      width: 280,
+    });
+    el.checkoutAuthStatus.textContent = "Elegí tu cuenta de Google para continuar.";
+  } catch (error) {
+    if (state.checkout.open && requestId === state.checkout.authAttempt) {
+      el.checkoutAuthStatus.textContent = error instanceof Error
+        ? error.message
+        : "No se pudo conectar con el inicio de Google.";
+    }
+  }
+}
+
+function loadGoogleIdentityServices() {
+  if (window.google?.accounts?.id) {
+    return Promise.resolve();
+  }
+  if (googleIdentityServicesPromise) {
+    return googleIdentityServicesPromise;
+  }
+
+  googleIdentityServicesPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("No se pudo cargar el inicio de Google."));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    googleIdentityServicesPromise = null;
+    throw error;
+  });
+
+  return googleIdentityServicesPromise;
+}
+
+async function handleGoogleCredential(response) {
+  const idToken = typeof response?.credential === "string" ? response.credential : "";
+  if (!idToken || !state.checkout.open) {
+    return;
+  }
+
+  const attempt = ++state.checkout.authAttempt;
+  el.checkoutAuthStatus.textContent = "Verificando tu cuenta…";
+  try {
+    const result = await fetch(CUSTOMER_AUTH_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({}),
+    });
+    const payload = await result.json().catch(() => null);
+    if (!result.ok || !payload?.customer) {
+      throw new Error("No se pudo verificar tu cuenta de Google.");
+    }
+    if (!state.checkout.open || attempt !== state.checkout.authAttempt) {
+      return;
+    }
+
+    state.checkout.idToken = idToken;
+    state.checkout.customer = payload.customer;
+    const customerName = payload.customer.name || payload.customer.email || "Cuenta verificada";
+    el.checkoutCustomerName.textContent = `Sesión iniciada como ${customerName}`;
+    el.checkoutCustomerName.hidden = false;
+    el.googleSignInButton.replaceChildren();
+    el.checkoutAuthStatus.textContent = "Cuenta verificada.";
+  } catch (error) {
+    if (!state.checkout.open || attempt !== state.checkout.authAttempt) {
+      return;
+    }
+    state.checkout.idToken = "";
+    state.checkout.customer = null;
+    el.checkoutAuthStatus.textContent = error instanceof Error
+      ? error.message
+      : "No se pudo verificar tu cuenta de Google.";
+  }
+}
+
+function updateCheckoutAddress() {
+  state.checkout.address = Object.fromEntries(new FormData(el.checkoutAddressForm).entries());
+}
+
+function keepCheckoutFocusInside(event) {
+  const focusable = Array.from(el.checkoutDialog.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])'
+  )).filter((element) => !element.hidden && element.getClientRects().length > 0);
+  if (!focusable.length) {
+    event.preventDefault();
+    el.checkoutDialog.focus();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && (document.activeElement === first || !el.checkoutDialog.contains(document.activeElement))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function switchView(viewName) {
@@ -1780,6 +1989,7 @@ function renderCart() {
   el.cartCountBadge.textContent = String(totalItems);
   el.cartToggleCount.textContent = String(totalItems);
   el.cartTotal.textContent = formatCurrency(totalAmount);
+  el.checkoutStartBtn.disabled = entries.length === 0;
 
   if (!entries.length) {
     el.cartItems.innerHTML = "<p class=\"empty\">Tu carrito esta vacio.</p>";

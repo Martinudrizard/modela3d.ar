@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#111111" />
     <meta name="color-scheme" content="light" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: blob:; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <meta
       name="description"
       content="Tienda de productos impresos en 3D de Modela3D.ar con catalogo real, pedidos personalizados y atencion directa por WhatsApp."
@@ -326,9 +326,109 @@
       <div id="cart-items" class="cart-items"></div>
       <div class="cart-footer">
         <p>Total: <strong id="cart-total">$0</strong></p>
+        <button
+          id="checkout-start-btn"
+          class="btn-ghost"
+          type="button"
+          aria-haspopup="dialog"
+          aria-controls="checkout-dialog"
+          disabled
+        >
+          Finalizar compra
+        </button>
         <button id="checkout-btn" class="btn-primary">Comprar por WhatsApp</button>
       </div>
     </aside>
+
+    <div id="checkout-overlay" class="checkout-overlay" hidden>
+      <section
+        id="checkout-dialog"
+        class="checkout-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="checkout-title"
+        aria-describedby="checkout-description"
+        tabindex="-1"
+      >
+        <div class="checkout-header">
+          <div>
+            <p class="eyebrow">Compra segura</p>
+            <h2 id="checkout-title">Finalizar compra</h2>
+          </div>
+          <button id="checkout-close" class="checkout-close" type="button" aria-label="Cerrar compra">
+            ×
+          </button>
+        </div>
+
+        <p id="checkout-description" class="checkout-description">
+          Iniciá sesión y completá la dirección para consultar el envío.
+        </p>
+
+        <section class="checkout-section" aria-labelledby="checkout-account-title">
+          <h3 id="checkout-account-title">Tu cuenta</h3>
+          <div id="google-signin-button"></div>
+          <p id="checkout-auth-status" class="checkout-status" role="status" aria-live="polite">
+            Conectando con Google…
+          </p>
+          <p id="checkout-customer-name" class="checkout-customer-name" hidden></p>
+        </section>
+
+        <form id="checkout-address-form" class="checkout-section checkout-address-form" autocomplete="on">
+          <h3>Dirección de entrega</h3>
+          <label for="checkout-recipient">Nombre y apellido</label>
+          <input id="checkout-recipient" name="recipient" autocomplete="name" required maxlength="100" />
+
+          <label for="checkout-street">Calle y altura</label>
+          <input id="checkout-street" name="street" autocomplete="street-address" required maxlength="120" />
+
+          <label for="checkout-address-extra">Piso, departamento (opcional)</label>
+          <input id="checkout-address-extra" name="addressExtra" autocomplete="address-line2" maxlength="80" />
+
+          <div class="checkout-address-grid">
+            <div>
+              <label for="checkout-city">Localidad</label>
+              <input id="checkout-city" name="city" autocomplete="address-level2" required maxlength="80" />
+            </div>
+            <div>
+              <label for="checkout-province">Provincia</label>
+              <input id="checkout-province" name="province" autocomplete="address-level1" required maxlength="80" />
+            </div>
+          </div>
+
+          <label for="checkout-postal-code">Código postal</label>
+          <input
+            id="checkout-postal-code"
+            name="postalCode"
+            autocomplete="postal-code"
+            inputmode="text"
+            pattern="[A-Za-z0-9 -]{4,10}"
+            title="Ingresá un código postal argentino válido."
+            required
+            maxlength="10"
+          />
+        </form>
+
+        <section class="checkout-section" aria-labelledby="checkout-shipping-title">
+          <h3 id="checkout-shipping-title">Opciones de envío</h3>
+          <p id="checkout-shipping-status" class="checkout-unavailable" role="status">
+            Cotización no disponible. Todavía no hay un servicio de envíos verificado.
+          </p>
+          <ul class="checkout-carriers" aria-label="Transportistas">
+            <li><span>Correo Argentino</span><span>No disponible</span></li>
+            <li><span>Andreani</span><span>No disponible</span></li>
+          </ul>
+          <button class="btn-ghost" type="button" disabled>Consultar cotización</button>
+        </section>
+
+        <div class="checkout-footer">
+          <button id="checkout-cancel" class="btn-ghost" type="button">Cancelar</button>
+          <button id="checkout-payment-btn" class="btn-primary" type="button" disabled>
+            Continuar al pago
+          </button>
+        </div>
+        <p class="checkout-payment-note">El pedido y el pago se habilitarán cuando haya una cotización verificada.</p>
+      </section>
+    </div>
 
     <div
       id="image-lightbox"
