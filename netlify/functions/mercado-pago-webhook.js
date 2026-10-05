@@ -9,6 +9,7 @@ const {
   resolveStore,
   updateOrderIfMatch,
 } = require("./store");
+const { notifyOrderPaid } = require("./lib/mailer");
 
 const ORDER_KEY_PREFIX = "order_v1:";
 const PAYMENT_CONFLICT_KEY_PREFIX = "payment_conflict_v1:";
@@ -128,6 +129,7 @@ function createHandler(options = {}) {
         }
         return response(200, { ok: true, updated: false });
       }
+      await (options.notifyOrderPaid || notifyOrderPaid)(updatedOrder);
       return response(200, { ok: true, updated: true });
     } catch {
       return response(502, { ok: false, error: "Payment notification processing failed" });
