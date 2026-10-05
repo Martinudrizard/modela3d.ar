@@ -379,6 +379,30 @@ function resolveStore(context) {
   });
 }
 
+async function readOrderWithEtag(store, key) {
+  const entry = await store.getWithMetadata(key, {
+    type: "json",
+    consistency: "strong",
+  });
+  if (!entry) {
+    return null;
+  }
+  return { order: entry.data, etag: entry.etag };
+}
+
+async function updateOrderIfMatch(store, key, order, etag) {
+  if (typeof etag !== "string" || !etag) {
+    return { modified: false };
+  }
+  return store.set(key, JSON.stringify(order), {
+    onlyIfMatch: etag,
+  });
+}
+
+async function createPaymentConflictIfNew(store, key, conflict) {
+  return store.set(key, JSON.stringify(conflict), { onlyIfNew: true });
+}
+
 function isAuthorized(event) {
   const expected = process.env.ADMIN_PANEL_KEY || "";
   if (!expected) {
@@ -395,3 +419,6 @@ function isAuthorized(event) {
 
 exports.readCatalogProducts = readCatalogProducts;
 exports.resolveStore = resolveStore;
+exports.readOrderWithEtag = readOrderWithEtag;
+exports.updateOrderIfMatch = updateOrderIfMatch;
+exports.createPaymentConflictIfNew = createPaymentConflictIfNew;
