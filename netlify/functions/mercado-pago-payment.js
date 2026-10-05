@@ -82,9 +82,6 @@ function createHandler(options = {}) {
         external_reference: order.id,
         notification_url: notificationUrl,
       };
-      if (typeof order.customerEmail === "string" && order.customerEmail.trim()) {
-        body.payer = { email: order.customerEmail.trim() };
-      }
 
       const preference = await preferenceClient.create({ body });
       if (!preference?.id || !String(preference.id).trim() || !isHttpsUrl(preference.init_point)) {

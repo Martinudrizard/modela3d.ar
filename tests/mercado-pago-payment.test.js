@@ -135,7 +135,7 @@ test("payment preference uses only the authenticated draft order values", async 
   }]);
   assert.equal(preferenceRequest.external_reference, "order-123");
   assert.equal(preferenceRequest.notification_url, "https://shop.example.test/.netlify/functions/mercado-pago-webhook");
-  assert.equal(preferenceRequest.payer.email, "buyer@example.test");
+  assert.equal(preferenceRequest.payer, undefined);
   assert.deepEqual(store.writes, ["order_v1:order-123"]);
   const updatedOrder = JSON.parse(store.values.get("order_v1:order-123"));
   assert.equal(updatedOrder.status, "pending");
