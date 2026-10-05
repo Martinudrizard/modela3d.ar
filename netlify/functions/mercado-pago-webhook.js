@@ -33,10 +33,14 @@ function createHandler(options = {}) {
     const requestId = getHeader(event, "x-request-id");
     const signature = getHeader(event, "x-signature");
     const webhookSecret = options.webhookSecret ?? process.env.MP_WEBHOOK_SECRET ?? "";
+    console.log(`[Webhook] Incoming notification - dataId: ${dataId}, requestId: ${requestId}, hasSignature: ${Boolean(signature)}, hasSecret: ${Boolean(webhookSecret)}`);
+
     if (!webhookSecret) {
+      console.warn("[Webhook] MP_WEBHOOK_SECRET is not configured in environment variables");
       return response(503, { ok: false, error: "Webhook signature is not configured" });
     }
     if (typeof dataId !== "string" || !dataId.trim()) {
+      console.warn("[Webhook] Missing payment notification id (data.id query param)");
       return response(400, { ok: false, error: "Missing payment notification id" });
     }
 
@@ -49,31 +53,38 @@ function createHandler(options = {}) {
         toleranceSeconds: SIGNATURE_TOLERANCE_SECONDS,
         ...(options.now ? { now: options.now } : {}),
       });
-    } catch {
+    } catch (sigErr) {
+      console.error("[Webhook] Invalid signature:", sigErr?.message);
       return response(401, { ok: false, error: "Invalid webhook signature" });
     }
 
     const parsed = safeJsonParse(event.body || "");
     if (!parsed.ok) {
+      console.warn("[Webhook] Invalid JSON body");
       return response(400, { ok: false, error: "Invalid webhook notification" });
     }
     const action = parsed.value?.action;
     if (parsed.value?.type !== "payment" && !(typeof action === "string" && action.startsWith("payment."))) {
+      console.log(`[Webhook] Ignored non-payment event: type=${parsed.value?.type}, action=${action}`);
       return response(200, { ok: true, ignored: true });
     }
     if (!options.paymentClient && !(options.accessToken ?? process.env.MP_ACCESS_TOKEN)) {
+      console.warn("[Webhook] MP_ACCESS_TOKEN is not configured");
       return response(503, { ok: false, error: "Mercado Pago access token is not configured" });
     }
 
     const store = options.store || resolveStore(context);
     if (!store) {
+      console.error("[Webhook] Order storage unavailable");
       return response(500, { ok: false, error: "Order storage unavailable" });
     }
 
     try {
       const paymentClient = options.paymentClient || createPaymentClient(options);
       const payment = await paymentClient.get({ id: dataId });
+      console.log(`[Webhook] Mercado Pago payment ${dataId} status: ${payment?.status}, external_reference: ${payment?.external_reference}`);
       if (!payment || String(payment.id) !== dataId || payment.status !== "approved") {
+        console.log(`[Webhook] Payment not approved or not found (status=${payment?.status})`);
         return response(200, { ok: true, updated: false });
       }
 
@@ -81,6 +92,7 @@ function createHandler(options = {}) {
         ? payment.external_reference
         : "";
       if (!orderId || orderId.length > 128 || /[\u0000-\u001f\u007f]/.test(orderId)) {
+        console.warn(`[Webhook] Invalid external_reference in payment: ${orderId}`);
         return response(200, { ok: true, updated: false });
       }
 
@@ -95,17 +107,20 @@ function createHandler(options = {}) {
         payment.currency_id !== order.currency ||
         order.currency !== "ARS"
       ) {
+        console.warn(`[Webhook] Order mismatch or not found: orderId=${orderId}, found=${Boolean(order)}, amountMatch=${payment.transaction_amount === order?.total}`);
         return response(200, { ok: true, updated: false });
       }
 
       if (order.status === "paid") {
         if (String(order.paymentId) === dataId) {
+          console.log(`[Webhook] Order ${orderId} already paid with paymentId ${dataId}`);
           return response(200, { ok: true, updated: false, duplicate: true });
         }
         await recordPaymentConflict(store, orderId, String(order.paymentId), dataId);
         return response(200, { ok: true, updated: false, conflict: true });
       }
       if (order.status !== "draft" && order.status !== "pending") {
+        console.log(`[Webhook] Order ${orderId} status is ${order.status}, ignoring`);
         return response(200, { ok: true, updated: false });
       }
 
@@ -129,9 +144,11 @@ function createHandler(options = {}) {
         }
         return response(200, { ok: true, updated: false });
       }
+      console.log(`[Webhook] Order ${orderId} marked as PAID. Dispatching email notifications...`);
       await (options.notifyOrderPaid || notifyOrderPaid)(updatedOrder);
       return response(200, { ok: true, updated: true });
-    } catch {
+    } catch (err) {
+      console.error("[Webhook] Payment notification processing failed:", err?.message);
       return response(502, { ok: false, error: "Payment notification processing failed" });
     }
   };

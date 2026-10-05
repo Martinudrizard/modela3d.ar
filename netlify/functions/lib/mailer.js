@@ -62,9 +62,12 @@ async function sendMail(message, options = {}) {
 async function notifyOrderPaid(order, options = {}) {
   const ownerEmail = options.ownerEmail ?? process.env.OWNER_EMAIL ?? options.from ?? process.env.MAIL_FROM ?? "";
   const send = options.sendMail || sendMail;
-  for (const email of buildOrderEmails(order, { ownerEmail })) {
+  const emails = buildOrderEmails(order, { ownerEmail });
+  console.log(`Order ${order.id}: sending ${emails.length} email(s)`);
+  for (const email of emails) {
     try {
-      await send(email, options);
+      const result = await send(email, options);
+      console.log(result?.skipped ? "Order email skipped: BREVO_API_KEY or MAIL_FROM missing" : "Order email sent");
     } catch (error) {
       console.error("Order email failed:", error?.message);
     }
