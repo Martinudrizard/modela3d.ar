@@ -8,6 +8,9 @@ const STORAGE_KEYS = {
 
 const CLOUD_ENDPOINT = "/.netlify/functions/store";
 const CUSTOMER_AUTH_ENDPOINT = "/.netlify/functions/customer-auth";
+const EMAIL_AUTH_ENDPOINT = "/.netlify/functions/email-auth";
+const ORDERS_ENDPOINT = "/.netlify/functions/orders";
+const PAYMENT_ENDPOINT = "/.netlify/functions/mercado-pago-payment";
 const CLOUD_KEYS = {
   products: "products",
   heroSlides: "heroSlides",
@@ -239,6 +242,10 @@ const el = {
   checkoutAuthStatus: document.getElementById("checkout-auth-status"),
   checkoutCustomerName: document.getElementById("checkout-customer-name"),
   googleSignInButton: document.getElementById("google-signin-button"),
+  checkoutEmailForm: document.getElementById("checkout-email-form"),
+  checkoutEmailRegister: document.getElementById("checkout-email-register"),
+  checkoutPaymentBtn: document.getElementById("checkout-payment-btn"),
+  checkoutPaymentStatus: document.getElementById("checkout-payment-status"),
   checkoutAddressForm: document.getElementById("checkout-address-form"),
   waNumber: document.getElementById("wa-number"),
   saveWaBtn: document.getElementById("save-wa"),
@@ -386,6 +393,18 @@ function bindEvents() {
     }
   });
   el.checkoutAddressForm.addEventListener("input", updateCheckoutAddress);
+  el.checkoutEmailForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void handleEmailAuth("login");
+  });
+  el.checkoutEmailRegister.addEventListener("click", () => {
+    if (el.checkoutEmailForm.reportValidity()) {
+      void handleEmailAuth("register");
+    }
+  });
+  el.checkoutPaymentBtn.addEventListener("click", () => {
+    void startPayment();
+  });
 
   document.addEventListener("click", (event) => {
     const target = event.target;
@@ -882,6 +901,9 @@ function closeCheckoutDialog() {
   state.checkout.customer = null;
   state.checkout.address = {};
   el.checkoutAddressForm.reset();
+  el.checkoutEmailForm.reset();
+  el.checkoutEmailForm.hidden = false;
+  el.checkoutPaymentBtn.disabled = true;
   el.googleSignInButton.replaceChildren();
   el.checkoutCustomerName.textContent = "";
   el.checkoutCustomerName.hidden = true;
@@ -980,22 +1002,112 @@ async function handleGoogleCredential(response) {
       return;
     }
 
-    state.checkout.idToken = idToken;
-    state.checkout.customer = payload.customer;
-    const customerName = payload.customer.name || payload.customer.email || "Cuenta verificada";
-    el.checkoutCustomerName.textContent = `Sesión iniciada como ${customerName}`;
-    el.checkoutCustomerName.hidden = false;
-    el.googleSignInButton.replaceChildren();
-    el.checkoutAuthStatus.textContent = "Cuenta verificada.";
+    applyCheckoutSession(idToken, payload.customer);
   } catch (error) {
     if (!state.checkout.open || attempt !== state.checkout.authAttempt) {
       return;
     }
     state.checkout.idToken = "";
     state.checkout.customer = null;
+    el.checkoutPaymentBtn.disabled = true;
     el.checkoutAuthStatus.textContent = error instanceof Error
       ? error.message
       : "No se pudo verificar tu cuenta de Google.";
+  }
+}
+
+function applyCheckoutSession(token, customer) {
+  state.checkout.idToken = token;
+  state.checkout.customer = customer;
+  const customerName = customer.name || customer.email || "Cuenta verificada";
+  el.checkoutCustomerName.textContent = `Sesión iniciada como ${customerName}`;
+  el.checkoutCustomerName.hidden = false;
+  el.googleSignInButton.replaceChildren();
+  el.checkoutEmailForm.hidden = true;
+  el.checkoutAuthStatus.textContent = "Cuenta verificada.";
+  el.checkoutPaymentBtn.disabled = false;
+}
+
+async function handleEmailAuth(action) {
+  if (!state.checkout.open) {
+    return;
+  }
+
+  const attempt = ++state.checkout.authAttempt;
+  const form = new FormData(el.checkoutEmailForm);
+  el.checkoutAuthStatus.textContent = action === "register" ? "Creando tu cuenta…" : "Verificando tus datos…";
+  try {
+    const result = await fetch(EMAIL_AUTH_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        email: String(form.get("email") || ""),
+        password: String(form.get("password") || ""),
+      }),
+    });
+    const payload = await result.json().catch(() => null);
+    if (!result.ok || !payload?.token || !payload?.customer) {
+      throw new Error(emailAuthErrorMessage(result.status));
+    }
+    if (!state.checkout.open || attempt !== state.checkout.authAttempt) {
+      return;
+    }
+    el.checkoutEmailForm.reset();
+    applyCheckoutSession(payload.token, payload.customer);
+  } catch (error) {
+    if (state.checkout.open && attempt === state.checkout.authAttempt) {
+      el.checkoutAuthStatus.textContent = error instanceof Error
+        ? error.message
+        : "No se pudo iniciar sesión.";
+    }
+  }
+}
+
+function emailAuthErrorMessage(status) {
+  const messages = {
+    400: "Revisá el email y la contraseña (mínimo 8 caracteres).",
+    401: "Email o contraseña incorrectos.",
+    409: "Ese email ya tiene una cuenta. Ingresá con tu contraseña.",
+    503: "El acceso con email no está configurado todavía.",
+  };
+  return messages[status] || "No se pudo iniciar sesión. Probá de nuevo.";
+}
+
+async function startPayment() {
+  const token = state.checkout.idToken;
+  const items = Object.entries(state.cart)
+    .map(([productId, quantity]) => ({ productId, quantity: Number(quantity) }))
+    .filter((item) => item.quantity > 0);
+  if (!token || !items.length) {
+    return;
+  }
+
+  el.checkoutPaymentBtn.disabled = true;
+  el.checkoutPaymentStatus.textContent = "Preparando tu pago…";
+  try {
+    const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+    const orderResponse = await fetch(ORDERS_ENDPOINT, { method: "POST", headers, body: JSON.stringify({ items }) });
+    const orderPayload = await orderResponse.json().catch(() => null);
+    if (!orderResponse.ok || !orderPayload?.order?.id) {
+      throw new Error(orderResponse.status === 401
+        ? "Tu sesión expiró. Volvé a iniciar sesión."
+        : "No pudimos crear el pedido. Revisá tu carrito.");
+    }
+
+    const paymentResponse = await fetch(PAYMENT_ENDPOINT, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ orderId: orderPayload.order.id }),
+    });
+    const payment = await paymentResponse.json().catch(() => null);
+    if (!paymentResponse.ok || typeof payment?.initPoint !== "string" || !payment.initPoint.startsWith("https://")) {
+      throw new Error("El pago no está disponible por ahora. Probá más tarde.");
+    }
+    window.location.assign(payment.initPoint);
+  } catch (error) {
+    el.checkoutPaymentStatus.textContent = error instanceof Error ? error.message : "No se pudo iniciar el pago.";
+    el.checkoutPaymentBtn.disabled = !state.checkout.idToken;
   }
 }
 

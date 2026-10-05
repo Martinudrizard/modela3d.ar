@@ -1,4 +1,4 @@
-const { authenticateGoogleIdentity } = require("./lib/google-auth");
+const { authenticateCustomer } = require("./lib/customer-session");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +25,7 @@ function createHandler(options = {}) {
       return response(405, { ok: false, error: "Method not allowed" });
     }
 
-    const result = await (options.authenticate || authenticateGoogleIdentity)(event, {
+    const result = await (options.authenticate || authenticateCustomer)(event, {
       clientId,
       verifyToken: options.verifyToken,
     });

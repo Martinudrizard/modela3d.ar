@@ -361,19 +361,29 @@
         </div>
 
         <p id="checkout-description" class="checkout-description">
-          Iniciá sesión y completá la dirección para consultar el envío.
+          Iniciá sesión para pagar con Mercado Pago. El envío lo coordinamos con vos después de la compra.
         </p>
 
         <section class="checkout-section" aria-labelledby="checkout-account-title">
           <h3 id="checkout-account-title">Tu cuenta</h3>
           <div id="google-signin-button"></div>
+          <form id="checkout-email-form" class="checkout-email-form" autocomplete="on">
+            <label for="checkout-email">Email</label>
+            <input id="checkout-email" name="email" type="email" autocomplete="email" required maxlength="254" />
+            <label for="checkout-password">Contraseña (mínimo 8 caracteres)</label>
+            <input id="checkout-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" />
+            <div class="checkout-footer">
+              <button id="checkout-email-login" class="btn-primary" type="submit">Ingresar</button>
+              <button id="checkout-email-register" class="btn-ghost" type="button">Crear cuenta</button>
+            </div>
+          </form>
           <p id="checkout-auth-status" class="checkout-status" role="status" aria-live="polite">
             Conectando con Google…
           </p>
           <p id="checkout-customer-name" class="checkout-customer-name" hidden></p>
         </section>
 
-        <form id="checkout-address-form" class="checkout-section checkout-address-form" autocomplete="on">
+        <form id="checkout-address-form" class="checkout-section checkout-address-form" autocomplete="on" hidden>
           <h3>Dirección de entrega</h3>
           <label for="checkout-recipient">Nombre y apellido</label>
           <input id="checkout-recipient" name="recipient" autocomplete="name" required maxlength="100" />
@@ -408,7 +418,7 @@
           />
         </form>
 
-        <section class="checkout-section" aria-labelledby="checkout-shipping-title">
+        <section class="checkout-section" aria-labelledby="checkout-shipping-title" hidden>
           <h3 id="checkout-shipping-title">Opciones de envío</h3>
           <p id="checkout-shipping-status" class="checkout-unavailable" role="status">
             Cotización no disponible. Todavía no hay un servicio de envíos verificado.
@@ -426,7 +436,7 @@
             Continuar al pago
           </button>
         </div>
-        <p class="checkout-payment-note">El pedido y el pago se habilitarán cuando haya una cotización verificada.</p>
+        <p id="checkout-payment-status" class="checkout-payment-note" role="status" aria-live="polite">Te redirigimos a Mercado Pago para completar el pago. Envío a coordinar.</p>
       </section>
     </div>
 

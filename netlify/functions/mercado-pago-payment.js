@@ -1,5 +1,5 @@
 const { MercadoPagoConfig, Preference } = require("mercadopago");
-const { authenticateGoogleIdentity } = require("./lib/google-auth");
+const { authenticateCustomer } = require("./lib/customer-session");
 const { readOrderWithEtag, resolveStore, updateOrderIfMatch } = require("./store");
 
 const ORDER_KEY_PREFIX = "order_v1:";
@@ -20,7 +20,7 @@ function createHandler(options = {}) {
       return response(405, { ok: false, error: "Method not allowed" });
     }
 
-    const auth = await (options.authenticate || authenticateGoogleIdentity)(event, {
+    const auth = await (options.authenticate || authenticateCustomer)(event, {
       clientId,
       verifyToken: options.verifyToken,
     });
