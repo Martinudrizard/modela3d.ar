@@ -118,7 +118,8 @@ function createHandler(options = {}) {
         preferenceId: updatedOrder.preferenceId,
         initPoint: preference.init_point,
       });
-    } catch {
+    } catch (error) {
+      console.error("Mercado Pago preference creation failed:", error?.message, error?.cause ?? "");
       return response(502, { ok: false, error: "Mercado Pago preference creation failed" });
     }
   };

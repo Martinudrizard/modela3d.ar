@@ -1107,7 +1107,7 @@ async function startPayment() {
     });
     const payment = await paymentResponse.json().catch(() => null);
     if (!paymentResponse.ok || typeof payment?.initPoint !== "string" || !payment.initPoint.startsWith("https://")) {
-      throw new Error("El pago no está disponible por ahora. Probá más tarde.");
+      throw new Error(`El pago no está disponible por ahora (${paymentResponse.status}: ${payment?.error || "sin detalle"}).`);
     }
     window.location.assign(payment.initPoint);
   } catch (error) {
