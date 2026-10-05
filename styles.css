@@ -1832,6 +1832,10 @@ body.catalog-menu-open {
   border-top: 1px solid var(--border);
 }
 
+.checkout-dialog [hidden] {
+  display: none !important;
+}
+
 .checkout-section h3 {
   margin: 0 0 2px;
   font-size: 1rem;

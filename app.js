@@ -245,6 +245,8 @@ const el = {
   checkoutEmailForm: document.getElementById("checkout-email-form"),
   checkoutEmailRegister: document.getElementById("checkout-email-register"),
   checkoutPaymentBtn: document.getElementById("checkout-payment-btn"),
+  checkoutPaymentStep: document.getElementById("checkout-payment-step"),
+  checkoutTotal: document.getElementById("checkout-total"),
   checkoutPaymentStatus: document.getElementById("checkout-payment-status"),
   checkoutAddressForm: document.getElementById("checkout-address-form"),
   waNumber: document.getElementById("wa-number"),
@@ -903,6 +905,7 @@ function closeCheckoutDialog() {
   el.checkoutAddressForm.reset();
   el.checkoutEmailForm.reset();
   el.checkoutEmailForm.hidden = false;
+  el.checkoutPaymentStep.hidden = true;
   el.checkoutPaymentBtn.disabled = true;
   el.googleSignInButton.replaceChildren();
   el.checkoutCustomerName.textContent = "";
@@ -1024,6 +1027,8 @@ function applyCheckoutSession(token, customer) {
   el.checkoutCustomerName.hidden = false;
   el.googleSignInButton.replaceChildren();
   el.checkoutEmailForm.hidden = true;
+  el.checkoutTotal.textContent = `Total del pedido: ${el.cartTotal.textContent}`;
+  el.checkoutPaymentStep.hidden = false;
   el.checkoutAuthStatus.textContent = "Cuenta verificada.";
   el.checkoutPaymentBtn.disabled = false;
 }

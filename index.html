@@ -430,13 +430,17 @@
           <button class="btn-ghost" type="button" disabled>Consultar cotización</button>
         </section>
 
-        <div class="checkout-footer">
-          <button id="checkout-cancel" class="btn-ghost" type="button">Cancelar</button>
-          <button id="checkout-payment-btn" class="btn-primary" type="button" disabled>
-            Continuar al pago
-          </button>
+        <div id="checkout-payment-step" class="checkout-section" hidden>
+          <h3>Pago</h3>
+          <p id="checkout-total" class="checkout-description"></p>
+          <div class="checkout-footer">
+            <button id="checkout-cancel" class="btn-ghost" type="button">Cancelar</button>
+            <button id="checkout-payment-btn" class="btn-primary" type="button" disabled>
+              Pagar con Mercado Pago
+            </button>
+          </div>
+          <p id="checkout-payment-status" class="checkout-payment-note" role="status" aria-live="polite">Te redirigimos a Mercado Pago para completar el pago. Envío a coordinar.</p>
         </div>
-        <p id="checkout-payment-status" class="checkout-payment-note" role="status" aria-live="polite">Te redirigimos a Mercado Pago para completar el pago. Envío a coordinar.</p>
       </section>
     </div>
 
