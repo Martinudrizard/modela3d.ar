@@ -32,8 +32,9 @@ function createHandler(options = {}) {
     const dataId = event.queryStringParameters?.["data.id"];
     const requestId = getHeader(event, "x-request-id");
     const signature = getHeader(event, "x-signature");
-    const webhookSecret = options.webhookSecret ?? process.env.MP_WEBHOOK_SECRET ?? "";
-    console.log(`[Webhook] Incoming notification - dataId: ${dataId}, requestId: ${requestId}, hasSignature: ${Boolean(signature)}, hasSecret: ${Boolean(webhookSecret)}`);
+    const webhookSecret = (options.webhookSecret ?? process.env.MP_WEBHOOK_SECRET ?? "").trim();
+    const secretPreview = webhookSecret ? `${webhookSecret.slice(0, 4)}...${webhookSecret.slice(-4)} (len ${webhookSecret.length})` : "EMPTY";
+    console.log(`[Webhook] Notification - dataId: ${dataId}, reqId: ${requestId}, sig: ${signature}, secretFingerprint: ${secretPreview}`);
 
     if (!webhookSecret) {
       console.warn("[Webhook] MP_WEBHOOK_SECRET is not configured in environment variables");
