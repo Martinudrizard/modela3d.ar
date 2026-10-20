@@ -243,6 +243,17 @@
                 inputmode="numeric"
               />
 
+              <label for="product-previous-price">Precio anterior (opcional)</label>
+              <input
+                id="product-previous-price"
+                name="product-previous-price"
+                type="number"
+                min="1"
+                step="1"
+                inputmode="numeric"
+                placeholder="Ej: 4200"
+              />
+
               <label for="product-images">Fotos (1 o mas)</label>
               <input
                 id="product-images"
@@ -479,7 +490,11 @@
           <h4 class="product-title"></h4>
           <p class="product-desc"></p>
           <div class="product-bottom">
-            <strong class="product-price"></strong>
+            <div class="product-price-stack">
+              <span class="product-price-old hidden"></span>
+              <span class="product-discount-badge hidden"></span>
+              <strong class="product-price"></strong>
+            </div>
             <button class="btn-add">Agregar</button>
           </div>
         </div>

@@ -257,6 +257,7 @@ const el = {
   productCategory: document.getElementById("product-category"),
   productDescription: document.getElementById("product-description"),
   productPrice: document.getElementById("product-price"),
+  productPreviousPrice: document.getElementById("product-previous-price"),
   jarraExtraFields: document.getElementById("jarra-extra-fields"),
   jarraSize: document.getElementById("jarra-size"),
   insumoExtraFields: document.getElementById("insumo-extra-fields"),
@@ -610,6 +611,7 @@ function bindEvents() {
     const category = String(formData.get("product-category") || "").trim();
     const description = String(formData.get("product-description") || "").trim();
     const priceValue = Number(formData.get("product-price"));
+    const previousPriceValue = Number(formData.get("product-previous-price"));
     const isPrinterSection = section === "Impresoras 3D";
     const jarraSize = String(formData.get("jarra-size") || "").trim();
     const brand = String(formData.get("insumo-brand") || "").trim();
@@ -650,6 +652,13 @@ function bindEvents() {
         );
       }
 
+      const normalizedPreviousPrice = Number.isFinite(previousPriceValue) && previousPriceValue > 0
+        ? Math.round(previousPriceValue)
+        : null;
+      const validPreviousPrice = normalizedPreviousPrice && normalizedPreviousPrice > priceValue && !isPrinterSection
+        ? normalizedPreviousPrice
+        : null;
+
       const product = {
         id: editingProduct?.id || createId(),
         name,
@@ -658,6 +667,7 @@ function bindEvents() {
         jarraSize: section === "Productos" && normalizedCategory === "Jarras" ? normalizeJarraSize(jarraSize) : "",
         description,
         price: isPrinterSection ? 0 : Math.round(priceValue),
+        originalPrice: isPrinterSection ? null : validPreviousPrice,
         images,
         brand: section === "Insumos" ? brand : "",
         material: section === "Insumos" ? material : "",
@@ -1766,6 +1776,8 @@ function buildProductCard(product) {
   const title = fragment.querySelector(".product-title");
   const desc = fragment.querySelector(".product-desc");
   const price = fragment.querySelector(".product-price");
+  const priceOld = fragment.querySelector(".product-price-old");
+  const discountBadge = fragment.querySelector(".product-discount-badge");
   const addButton = fragment.querySelector(".btn-add");
 
   const productImages = Array.isArray(product.images) ? product.images : [];
@@ -1791,13 +1803,25 @@ function buildProductCard(product) {
   desc.textContent = product.description;
   const isPrinter = normalizeSection(product.section) === "Impresoras 3D";
   price.classList.remove("product-price-inquiry");
+  priceOld.classList.add("hidden");
+  discountBadge.classList.add("hidden");
+
   if (isPrinter) {
     price.textContent = "Solicitar precio y promociones";
     price.classList.add("product-price-inquiry");
     addButton.textContent = "Consultar";
     addButton.dataset.productInquiry = "printer";
   } else {
+    const discountData = getProductDiscountData(product);
     price.textContent = formatCurrency(product.price);
+
+    if (discountData.hasDiscount) {
+      priceOld.textContent = formatCurrency(discountData.originalPrice);
+      priceOld.classList.remove("hidden");
+      discountBadge.textContent = `-${discountData.discountPercent}%`;
+      discountBadge.classList.remove("hidden");
+    }
+
     addButton.textContent = "Agregar";
     delete addButton.dataset.productInquiry;
   }
@@ -2821,6 +2845,22 @@ function normalizeJarraSize(value) {
   return "500ml";
 }
 
+function getProductDiscountData(product) {
+  const currentPrice = Number(product.price);
+  const originalPrice = Number(product.originalPrice ?? product.oldPrice ?? product.comparePrice ?? product.regularPrice ?? 0);
+
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0 || !Number.isFinite(originalPrice) || originalPrice <= currentPrice) {
+    return { hasDiscount: false, originalPrice: 0, currentPrice: 0, discountPercent: 0 };
+  }
+
+  return {
+    hasDiscount: true,
+    originalPrice,
+    currentPrice,
+    discountPercent: Math.max(0, Math.round(((originalPrice - currentPrice) / originalPrice) * 100)),
+  };
+}
+
 function normalizeProduct(product) {
   const rawSection = String(product.section || "").trim();
   const rawCategory = String(product.category || "").trim();
@@ -2838,12 +2878,21 @@ function normalizeProduct(product) {
       ? formatCategory(rawSection)
     : rawSection.trim().toLowerCase() === "jarras" || legacyJarraSizeCategory
       ? "Jarras"
-    : normalizeSubsection(normalizedSection, product.category);
+      : normalizeSubsection(normalizedSection, product.category);
+
+  const normalizedOriginalPrice = Number(product.originalPrice ?? product.oldPrice ?? product.comparePrice ?? product.regularPrice ?? 0);
 
   return {
     ...product,
     section: normalizedSection,
     category: normalizedCategory,
+    price: Number(product.price) || 0,
+    originalPrice:
+      normalizedSection === "Impresoras 3D"
+        ? null
+        : Number.isFinite(normalizedOriginalPrice) && normalizedOriginalPrice > Number(product.price || 0)
+          ? Math.round(normalizedOriginalPrice)
+          : null,
     jarraSize:
       normalizedSection === "Productos" && normalizedCategory === "Jarras"
         ? normalizeJarraSize(product.jarraSize || rawCategory)
@@ -2929,6 +2978,11 @@ function startProductEdit(productId) {
     normalizeSection(targetProduct.section) === "Impresoras 3D"
       ? ""
       : String(targetProduct.price);
+  const previousPrice = Number(targetProduct.originalPrice ?? targetProduct.oldPrice ?? targetProduct.comparePrice ?? 0);
+  el.productPreviousPrice.value =
+    normalizeSection(targetProduct.section) === "Impresoras 3D" || !Number.isFinite(previousPrice) || previousPrice <= 0
+      ? ""
+      : String(previousPrice);
   el.insumoBrand.value = targetProduct.brand || "";
   el.insumoMaterial.value = targetProduct.material || "";
   el.jarraSize.value = normalizeJarraSize(targetProduct.jarraSize || "500ml");
