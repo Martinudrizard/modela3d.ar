@@ -36,7 +36,7 @@ const IMAGE_UPLOAD_CONFIG = {
 };
 
 const SHOP_SECTIONS = ["Productos", "Insumos", "Impresoras 3D"];
-const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes"];
+const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes", "Personaliza tu llavero"];
 const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
 const IMPRESORAS_SUBSECTIONS = ["Impresora 3D"];
 const JARRA_SIZES = ["500ml", "1 litro"];
@@ -1797,6 +1797,16 @@ function renderProducts() {
 }
 
 function renderProductCatalog() {
+  const customizer = document.getElementById("customizer-shell");
+  if (customizer) {
+    customizer.classList.toggle("hidden-block", state.activeCategory !== "Personaliza tu llavero");
+  }
+
+  if (state.activeCategory === "Personaliza tu llavero") {
+    el.productsSections.innerHTML = "";
+    return;
+  }
+
   let sourceProducts = state.products.filter(
     (product) => product.section === state.activeSection && product.category === state.activeCategory
   );
