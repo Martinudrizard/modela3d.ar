@@ -172,6 +172,7 @@ const state = {
   catalogMenuOpen: false,
   catalogDrawerMode: "root",
   catalogDrawerSection: "",
+  catalogBrowsingStarted: false,
   toastTimerById: {},
   checkout: {
     open: false,
@@ -225,6 +226,19 @@ const el = {
   lightboxNext: document.getElementById("lightbox-next"),
   lightboxImage: document.getElementById("lightbox-image"),
   lightboxCounter: document.getElementById("lightbox-counter"),
+  productDetailModal: document.getElementById("product-detail-modal"),
+  productDetailClose: document.getElementById("product-detail-close"),
+  productDetailMainImage: document.getElementById("product-detail-main-image"),
+  productDetailThumbs: document.getElementById("product-detail-thumbs"),
+  productDetailSection: document.getElementById("product-detail-section"),
+  productDetailTitle: document.getElementById("product-detail-title"),
+  productDetailDescription: document.getElementById("product-detail-description"),
+  productDetailPriceWrap: document.getElementById("product-detail-price-wrap"),
+  productDetailAdd: document.getElementById("product-detail-add"),
+  keychainLogoUpload: document.getElementById("keychain-logo-upload"),
+  keychainName: document.getElementById("keychain-name"),
+  keychainPreviewArt: document.getElementById("keychain-preview-art"),
+  keychainPreviewName: document.getElementById("keychain-preview-name"),
   toastStack: document.getElementById("toast-stack"),
   cartPanel: document.querySelector(".cart-panel"),
   cartToggle: document.getElementById("cart-toggle"),
@@ -308,10 +322,59 @@ async function init() {
   setCartOpen(false);
 
   bindEvents();
+  bindCatalogKeychainCustomizer();
   setCatalogMenuOpen(false, true);
   renderAll();
 
   await hydrateFromCloud();
+}
+
+function bindCatalogKeychainCustomizer() {
+  if (!el.keychainLogoUpload || !el.keychainName || !el.keychainPreviewArt || !el.keychainPreviewName) {
+    return;
+  }
+
+  const updatePreview = (logoDataUrl = "", text = "") => {
+    const safeText = String(text || "").trim() || "Modela3D";
+    el.keychainPreviewName.textContent = safeText;
+    el.keychainPreviewArt.innerHTML = "";
+
+    if (logoDataUrl) {
+      const img = document.createElement("img");
+      img.src = logoDataUrl;
+      img.alt = "Logo de llavero";
+      img.className = "keychain-preview-image";
+      el.keychainPreviewArt.appendChild(img);
+      el.keychainPreviewArt.classList.add("has-logo");
+      return;
+    }
+
+    el.keychainPreviewArt.classList.remove("has-logo");
+    el.keychainPreviewArt.textContent = "LOGO";
+    el.keychainPreviewArt.style.fontSize = "0.9rem";
+  };
+
+  el.keychainName.addEventListener("input", (event) => {
+    updatePreview(el.keychainPreviewArt.dataset.logo || "", event.target.value);
+  });
+
+  el.keychainLogoUpload.addEventListener("change", (event) => {
+    const [file] = Array.from(event.target.files || []);
+    if (!file) {
+      updatePreview("", el.keychainName.value);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      el.keychainPreviewArt.dataset.logo = result;
+      updatePreview(result, el.keychainName.value);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  updatePreview("", el.keychainName.value);
 }
 
 function bindEvents() {
@@ -377,6 +440,7 @@ function bindEvents() {
 
   window.addEventListener("resize", () => {
     setCatalogMenuOpen(state.catalogMenuOpen, true);
+    updateShopBrowsingState();
   });
 
   el.cartToggle.addEventListener("click", () => {
@@ -473,6 +537,21 @@ function bindEvents() {
   el.lightboxClose.addEventListener("click", closeImageLightbox);
   el.lightboxPrev.addEventListener("click", () => stepLightbox(-1));
   el.lightboxNext.addEventListener("click", () => stepLightbox(1));
+
+  el.productDetailClose.addEventListener("click", closeProductDetailModal);
+  el.productDetailModal.addEventListener("click", (event) => {
+    if (event.target === el.productDetailModal) {
+      closeProductDetailModal();
+    }
+  });
+  el.productDetailAdd.addEventListener("click", () => {
+    const productId = el.productDetailAdd.dataset.productId;
+    if (!productId) {
+      return;
+    }
+    changeQty(productId, 1);
+    closeProductDetailModal();
+  });
 
   document.addEventListener("keydown", (event) => {
     if (state.checkout.open) {
@@ -1165,6 +1244,8 @@ function switchView(viewName) {
   Object.entries(el.views).forEach(([name, view]) => {
     view.classList.toggle("active", name === viewName);
   });
+
+  updateShopBrowsingState();
 }
 
 function updateAdminVisibility() {
@@ -1252,6 +1333,15 @@ async function validateAdminKey() {
   }
 }
 
+function updateShopBrowsingState() {
+  const shopView = document.getElementById("shop-view");
+  if (!shopView) {
+    return;
+  }
+
+  shopView.classList.toggle("shop-browsing", state.catalogBrowsingStarted && isMobileViewport());
+}
+
 function renderAll() {
   renderHeroCarousel();
   renderSectionChips();
@@ -1259,6 +1349,7 @@ function renderAll() {
   renderJarraSizeChips();
   renderInsumosFilterPanel();
   updateCatalogVisibility();
+  updateShopBrowsingState();
   renderProducts();
   renderCart();
   renderAdminProducts();
@@ -1599,6 +1690,7 @@ function renderSectionChips() {
 
     button.addEventListener("click", () => {
       state.activeSection = section;
+      state.catalogBrowsingStarted = true;
       const subsectionOptions = getSubsectionsBySection(section);
       state.activeCategory = section === "Insumos" ? "Todas" : subsectionOptions[0] || "Todas";
       state.activeJarraSize = "Todas";
@@ -1607,6 +1699,7 @@ function renderSectionChips() {
       renderJarraSizeChips();
       renderInsumosFilterPanel();
       updateCatalogVisibility();
+      updateShopBrowsingState();
       renderProducts();
       closeCatalogMenuAfterFilterSelect();
     });
@@ -1642,8 +1735,10 @@ function renderProductSubsectionChips() {
     button.addEventListener("click", () => {
       state.activeCategory = subsection;
       state.activeJarraSize = "Todas";
+      state.catalogBrowsingStarted = true;
       renderProductSubsectionChips();
       renderJarraSizeChips();
+      updateShopBrowsingState();
       renderProducts();
       closeCatalogMenuAfterFilterSelect();
     });
@@ -1779,6 +1874,7 @@ function buildProductCard(product) {
   const priceOld = fragment.querySelector(".product-price-old");
   const discountBadge = fragment.querySelector(".product-discount-badge");
   const addButton = fragment.querySelector(".btn-add");
+  card.dataset.productId = product.id;
 
   const productImages = Array.isArray(product.images) ? product.images : [];
   const selectedImageIndex = state.imageIndexByProduct[product.id] || 0;
@@ -1802,7 +1898,7 @@ function buildProductCard(product) {
   title.textContent = product.name;
   desc.textContent = product.description;
   const isPrinter = normalizeSection(product.section) === "Impresoras 3D";
-  price.classList.remove("product-price-inquiry");
+  price.classList.remove("product-price-inquiry", "is-discounted");
   priceOld.classList.add("hidden");
   discountBadge.classList.add("hidden");
 
@@ -1820,6 +1916,7 @@ function buildProductCard(product) {
       priceOld.classList.remove("hidden");
       discountBadge.textContent = `-${discountData.discountPercent}%`;
       discountBadge.classList.remove("hidden");
+      price.classList.add("is-discounted");
     }
 
     addButton.textContent = "Agregar";
@@ -1960,6 +2057,15 @@ function handleProductGridClick(event) {
       const images = Array.isArray(product.images) ? product.images : [];
       const index = Number(clickedImage.dataset.imageIndex || 0);
       openImageLightbox(images, index, product.name);
+      return;
+    }
+  }
+
+  const productCard = target.closest(".product-card");
+  if (productCard && !target.closest(".btn-add") && !target.closest(".product-nav") && !target.closest(".dot")) {
+    const productId = productCard.dataset.productId;
+    if (productId) {
+      openProductDetailModal(productId);
       return;
     }
   }
@@ -2301,6 +2407,88 @@ function removeFromCart(productId) {
   }
 }
 
+function openProductDetailModal(productId) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) {
+    return;
+  }
+
+  const images = Array.isArray(product.images) ? product.images.filter((image) => typeof image === "string" && image.trim()) : [];
+  const safeImages = images.length ? images : [buildMissingImagePlaceholder(product.name)];
+  const discountData = getProductDiscountData(product);
+
+  el.productDetailSection.textContent = `${normalizeSection(product.section)} · ${product.category || "Catalogo"}`;
+  el.productDetailTitle.textContent = product.name;
+  el.productDetailDescription.textContent = product.description;
+  el.productDetailAdd.dataset.productId = product.id;
+
+  const priceWrap = el.productDetailPriceWrap;
+  priceWrap.innerHTML = "";
+
+  if (discountData.hasDiscount) {
+    const oldPrice = document.createElement("span");
+    oldPrice.className = "product-detail-price-old";
+    oldPrice.textContent = formatCurrency(discountData.originalPrice);
+
+    const newPrice = document.createElement("strong");
+    newPrice.className = "product-detail-price is-discounted";
+    newPrice.textContent = formatCurrency(product.price);
+
+    const discount = document.createElement("span");
+    discount.className = "product-detail-discount";
+    discount.textContent = `-${discountData.discountPercent}%`;
+
+    priceWrap.append(oldPrice, discount, newPrice);
+  } else {
+    const currentPrice = document.createElement("strong");
+    currentPrice.className = "product-detail-price";
+    currentPrice.textContent = formatCurrency(product.price);
+    priceWrap.appendChild(currentPrice);
+  }
+
+  state.lightbox.images = safeImages;
+  state.lightbox.index = 0;
+  state.lightbox.label = product.name;
+  renderProductDetailGallery(safeImages, 0);
+
+  el.productDetailModal.classList.add("open");
+  el.productDetailModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+
+function renderProductDetailGallery(images, activeIndex = 0) {
+  const safeImages = Array.isArray(images) ? images.filter((image) => typeof image === "string" && image.trim()) : [];
+  if (!safeImages.length) {
+    return;
+  }
+
+  const lastIndex = safeImages.length - 1;
+  const safeIndex = Math.max(0, Math.min(activeIndex, lastIndex));
+  const mainImage = safeImages[safeIndex] || safeImages[0];
+
+  el.productDetailMainImage.src = mainImage;
+  el.productDetailMainImage.alt = `Imagen de ${el.productDetailTitle.textContent || "producto"}`;
+
+  el.productDetailThumbs.innerHTML = "";
+  safeImages.forEach((image, index) => {
+    const thumb = document.createElement("img");
+    thumb.src = image;
+    thumb.alt = `Vista ${index + 1}`;
+    thumb.className = "product-detail-thumb";
+    if (index === safeIndex) {
+      thumb.classList.add("active");
+    }
+    thumb.addEventListener("click", () => renderProductDetailGallery(safeImages, index));
+    el.productDetailThumbs.appendChild(thumb);
+  });
+}
+
+function closeProductDetailModal() {
+  el.productDetailModal.classList.remove("open");
+  el.productDetailModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
 function openImageLightbox(images, startIndex = 0, label = "") {
   const safeImages = Array.isArray(images)
     ? images.filter((image) => typeof image === "string" && image.trim())
@@ -2492,6 +2680,7 @@ function handleCatalogSectionSelection(rawSection) {
   const section = normalizeSection(rawSection);
   state.activeSection = section;
   state.activeJarraSize = "Todas";
+  state.catalogBrowsingStarted = true;
   state.catalogDrawerSection = section;
 
   if (section === "Insumos") {
@@ -2501,6 +2690,7 @@ function handleCatalogSectionSelection(rawSection) {
     renderJarraSizeChips();
     renderInsumosFilterPanel();
     updateCatalogVisibility();
+    updateShopBrowsingState();
     renderProducts();
     closeCatalogMenuAfterFilterSelect();
     return;
@@ -2513,6 +2703,7 @@ function handleCatalogSectionSelection(rawSection) {
   renderProductSubsectionChips();
   renderJarraSizeChips();
   updateCatalogVisibility();
+  updateShopBrowsingState();
   renderProducts();
   renderCatalogDrawerMenu();
 }
@@ -2522,6 +2713,7 @@ function handleCatalogSubsectionSelection(subsection) {
   state.activeSection = section;
   state.activeCategory = subsection;
   state.activeJarraSize = "Todas";
+  state.catalogBrowsingStarted = true;
 
   if (section === "Productos" && subsection === "Jarras") {
     state.catalogDrawerMode = "jarra-size";
@@ -2529,6 +2721,7 @@ function handleCatalogSubsectionSelection(subsection) {
     renderProductSubsectionChips();
     renderJarraSizeChips();
     updateCatalogVisibility();
+    updateShopBrowsingState();
     renderProducts();
     renderCatalogDrawerMenu();
     return;
@@ -2538,6 +2731,7 @@ function handleCatalogSubsectionSelection(subsection) {
   renderProductSubsectionChips();
   renderJarraSizeChips();
   updateCatalogVisibility();
+  updateShopBrowsingState();
   renderProducts();
   closeCatalogMenuAfterFilterSelect();
 }
@@ -2546,10 +2740,12 @@ function handleCatalogJarraSizeSelection(size) {
   state.activeSection = "Productos";
   state.activeCategory = "Jarras";
   state.activeJarraSize = size || "Todas";
+  state.catalogBrowsingStarted = true;
   renderSectionChips();
   renderProductSubsectionChips();
   renderJarraSizeChips();
   updateCatalogVisibility();
+  updateShopBrowsingState();
   renderProducts();
   closeCatalogMenuAfterFilterSelect();
 }
