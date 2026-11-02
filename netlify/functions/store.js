@@ -4,7 +4,7 @@ const ALLOWED_KEYS = new Set(["products", "heroSlides", "waNumber"]);
 const PRODUCT_MUTATION_KEY = "__products_mutation";
 const PRODUCTS_IDS_KEY = "products_ids_v2";
 const PRODUCT_KEY_PREFIX = "product_v2:";
-const MAX_IMAGES_PER_PRODUCT_IN_CLOUD = 1;
+const MAX_IMAGES_PER_PRODUCT_IN_CLOUD = 6;
 const MAX_DATA_URL_LENGTH_IN_CLOUD = 260000;
 
 const CORS_HEADERS = {
@@ -44,6 +44,16 @@ exports.handler = async (event, context) => {
 
         const image = await readProductImage(store, productId);
         return response(200, { ok: true, data: image || null });
+      }
+
+      if (key === "productImages") {
+        const productId = String(event.queryStringParameters?.id || "").trim();
+        if (!productId) {
+          return response(400, { ok: false, error: "Missing product id" });
+        }
+
+        const images = await readProductImages(store, productId);
+        return response(200, { ok: true, data: images });
       }
 
       if (!ALLOWED_KEYS.has(key)) {
@@ -250,28 +260,48 @@ async function readCatalogProducts(store) {
   return readMergedProducts(store);
 }
 
+function normalizeImageList(images) {
+  if (!Array.isArray(images)) {
+    return [];
+  }
+
+  return images.filter((image) => typeof image === "string" && image.trim());
+}
+
+async function readProductImages(store, productId) {
+  const id = String(productId || "").trim();
+  if (!id) {
+    return [];
+  }
+
+  const v2Raw = await store.get(`${PRODUCT_KEY_PREFIX}${id}`);
+  if (v2Raw) {
+    const v2Product = safeJsonParse(v2Raw).value;
+    const v2Images = normalizeImageList(v2Product?.images);
+    if (v2Images.length) {
+      return v2Images;
+    }
+  }
+
+  const legacyProducts = await readLegacyProducts(store);
+  const legacy = legacyProducts.find((product) => String(product?.id || "").trim() === id);
+  const legacyImages = normalizeImageList(legacy?.images);
+  if (legacyImages.length) {
+    return legacyImages;
+  }
+
+  return [];
+}
+
 async function readProductImage(store, productId) {
   const id = String(productId || "").trim();
   if (!id) {
     return "";
   }
 
-  const v2Raw = await store.get(`${PRODUCT_KEY_PREFIX}${id}`);
-  if (v2Raw) {
-    const v2Product = safeJsonParse(v2Raw).value;
-    const v2Images = Array.isArray(v2Product?.images) ? v2Product.images : [];
-    const v2Image = v2Images.find((image) => typeof image === "string" && image.trim());
-    if (v2Image) {
-      return v2Image;
-    }
-  }
-
-  const legacyProducts = await readLegacyProducts(store);
-  const legacy = legacyProducts.find((product) => String(product?.id || "").trim() === id);
-  const legacyImages = Array.isArray(legacy?.images) ? legacy.images : [];
-  const legacyImage = legacyImages.find((image) => typeof image === "string" && image.trim());
-  if (legacyImage) {
-    return legacyImage;
+  const images = await readProductImages(store, id);
+  if (images.length) {
+    return images[0];
   }
 
   const mergedProducts = await readMergedProducts(store);
@@ -323,15 +353,15 @@ function compactProductsForResponse(products) {
   const source = Array.isArray(products) ? products : [];
 
   return source.map((product) => {
-    const images = Array.isArray(product?.images) ? product.images : [];
+    const images = normalizeImageList(product?.images);
     const safeImages = images
-      .filter((image) => typeof image === "string" && image.trim())
       .filter((image) => !image.startsWith("data:image/"))
       .slice(0, 1);
 
     return {
       ...product,
       images: safeImages,
+      imageCount: images.length,
     };
   });
 }
@@ -359,24 +389,26 @@ function safeJsonParse(text) {
   }
 }
 
-function resolveStore(context) {
-  const runtimeStore = context?.blobs?.getStore?.("modela3d");
-  if (runtimeStore) {
-    return runtimeStore;
+function resolveStore() {
+  // The Netlify runtime injects NETLIFY_BLOBS_CONTEXT, so the store opens with
+  // just its name. Never override that context with a manual token: a stale
+  // NETLIFY_BLOBS_TOKEN means every read fails with 401 Access Denied.
+  try {
+    return getStore("modela3d");
+  } catch {
+    const token = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN || "";
+    const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID || "";
+
+    if (!token || !siteID) {
+      return null;
+    }
+
+    return getStore({
+      name: "modela3d",
+      token,
+      siteID,
+    });
   }
-
-  const token = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN || "";
-  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID || "";
-
-  if (!token || !siteID) {
-    return null;
-  }
-
-  return getStore({
-    name: "modela3d",
-    token,
-    siteID,
-  });
 }
 
 async function readOrderWithEtag(store, key) {
@@ -418,6 +450,8 @@ function isAuthorized(event) {
 }
 
 exports.readCatalogProducts = readCatalogProducts;
+exports.readProductImages = readProductImages;
+exports.compactProductsForResponse = compactProductsForResponse;
 exports.resolveStore = resolveStore;
 exports.readOrderWithEtag = readOrderWithEtag;
 exports.updateOrderIfMatch = updateOrderIfMatch;
