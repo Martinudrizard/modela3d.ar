@@ -4,10 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Modela3D.ar | Tienda 3D</title>
-    <meta name="theme-color" content="#111111" />
+    <meta name="theme-color" content="#0d0f14" />
     <meta name="color-scheme" content="light" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: blob:; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://modela3dar.netlify.app https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <meta
       name="description"
       content="Tienda de productos impresos en 3D de Modela3D.ar con catalogo real, pedidos personalizados y atencion directa por WhatsApp."
@@ -15,14 +17,22 @@
     <meta property="og:title" content="Modela3D.ar | Tienda 3D" />
     <meta property="og:description" content="Productos 3D, insumos e impresoras con atencion directa y pedidos personalizados." />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Modela3D.ar" />
     <meta property="og:image" content="assets/logo.png" />
+    <meta property="og:image:alt" content="Logo de Modela3D.ar" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Modela3D.ar | Tienda 3D" />
+    <meta name="twitter:description" content="Productos 3D, insumos e impresoras con atencion directa y pedidos personalizados." />
+    <meta name="twitter:image" content="assets/logo.png" />
+    <link rel="icon" type="image/png" href="assets/logo.png" />
+    <link rel="apple-touch-icon" href="assets/logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260801a" />
+    <link rel="stylesheet" href="styles.css?v=20261022b" />
   </head>
   <body>
     <div class="bg-shape bg-shape-a"></div>
@@ -30,9 +40,11 @@
 
     <header class="site-header">
       <div class="brand">
-        <div id="brand-logo" class="brand-logo" aria-hidden="true">
-          <img class="brand-logo-image" src="assets/logo.png" alt="Logo Modela3D" />
-        </div>
+        <button id="brand-logo" class="brand-logo-button" type="button" aria-label="Ir al inicio">
+          <div class="brand-logo" aria-hidden="true">
+            <img class="brand-logo-image" src="assets/logo.png" alt="Logo Modela3D" />
+          </div>
+        </button>
         <div>
           <h1>Modela3D.ar</h1>
           <p>Impresion 3D personalizada</p>
@@ -41,10 +53,11 @@
 
       <div class="header-actions">
         <nav class="view-switch" aria-label="Cambiar vista">
-          <button class="view-btn shop-desktop-btn active" data-view="shop">Tienda</button>
+          <button class="view-btn" data-view="landing">Inicio</button>
+          <button class="view-btn shop-desktop-btn" data-view="shop">Tienda</button>
           <button
             id="catalog-menu-toggle"
-            class="view-btn catalog-menu-toggle active"
+            class="view-btn catalog-menu-toggle"
             type="button"
             aria-expanded="false"
             aria-controls="catalog-menu-panel"
@@ -64,10 +77,140 @@
     </header>
 
     <main>
-      <section id="shop-view" class="view active" aria-labelledby="shop-title">
+      <section id="landing-view" class="view active" aria-labelledby="landing-title">
+        <div class="landing-hero">
+          <div class="landing-hero-copy">
+            <p class="eyebrow">Impresión 3D · Hecho en Argentina</p>
+            <h2 id="landing-title" class="landing-title">PIEZAS 3D QUE SE SIENTEN HECHAS PARA VOS</h2>
+            <p class="landing-subtitle">
+              Diseñamos e imprimimos llaveros, jarras, soportes y piezas a medida. Comprá lo que ya está listo o contanos tu idea y la hacemos realidad.
+            </p>
+            <div class="landing-actions">
+              <button id="landing-cta-shop" class="btn-primary" type="button">Ver catálogo</button>
+              <button id="landing-cta-whatsapp" class="btn-ghost" type="button">Contanos tu idea</button>
+            </div>
+            <div class="landing-badges">
+              <span class="landing-badge">Envíos a todo el país</span>
+              <span class="landing-badge">Mercado Pago</span>
+              <span class="landing-badge">Atención directa</span>
+            </div>
+          </div>
+          <div class="landing-hero-media">
+            <div class="landing-hero-frame">
+              <video
+                id="landing-carousel-image"
+                class="landing-hero-video"
+                autoplay
+                muted
+                playsinline
+                aria-label="Video destacado Modela3D"
+              ></video>
+              <button id="landing-prev" class="landing-nav landing-prev" type="button" aria-label="Video anterior">‹</button>
+              <button id="landing-next" class="landing-nav landing-next" type="button" aria-label="Video siguiente">›</button>
+              <div id="landing-dots" class="landing-dots"></div>
+            </div>
+            <div class="landing-hero-note">
+              <span class="landing-hero-note-dot" aria-hidden="true"></span>
+              Piezas reales, impresas a pedido
+            </div>
+          </div>
+        </div>
+
+        <section class="landing-trust" aria-label="Beneficios de comprar en Modela3D">
+          <div class="landing-trust-item">
+            <span class="landing-trust-icon" aria-hidden="true">01</span>
+            <strong>Diseño propio</strong>
+          </div>
+          <div class="landing-trust-item">
+            <span class="landing-trust-icon" aria-hidden="true">02</span>
+            <strong>Impresión a pedido</strong>
+          </div>
+          <div class="landing-trust-item">
+            <span class="landing-trust-icon" aria-hidden="true">03</span>
+            <strong>Envíos a todo el país</strong>
+          </div>
+          <div class="landing-trust-item">
+            <span class="landing-trust-icon" aria-hidden="true">04</span>
+            <strong>Atención personalizada</strong>
+          </div>
+        </section>
+
+        <section class="landing-block" aria-labelledby="landing-categories-title">
+          <div class="landing-block-head">
+            <div>
+              <p class="eyebrow">Explorá la tienda</p>
+              <h2 id="landing-categories-title" class="landing-block-title">ELEGÍ POR DÓNDE EMPEZAR</h2>
+            </div>
+            <button id="landing-cta-all" class="btn-ghost landing-block-link" type="button">Ver todo el catálogo</button>
+          </div>
+          <div id="landing-categories" class="landing-categories" aria-live="polite"></div>
+        </section>
+
+        <section class="landing-story" aria-labelledby="landing-story-title">
+          <div class="landing-story-copy">
+            <p class="eyebrow">Modela3D.ar</p>
+            <h2 id="landing-story-title" class="landing-block-title">DISEÑO, IMPRESIÓN Y TERMINACIÓN EN UN SOLO LUGAR</h2>
+            <p class="landing-story-text">
+              Trabajamos cada pieza con materiales de calidad y terminaciones cuidadas. Si ya sabés qué querés, lo encontrás en la tienda. Si tenés una idea, la pensamos juntos.
+            </p>
+            <ul class="landing-points">
+              <li>Piezas listas para regalar o usar todos los días.</li>
+              <li>Materiales resistentes y colores a elección.</li>
+              <li>Seguimiento del pedido por WhatsApp.</li>
+            </ul>
+            <button id="landing-cta-custom" class="btn-primary" type="button">Quiero algo a medida</button>
+          </div>
+          <div class="landing-story-media">
+            <img id="landing-story-image" class="landing-story-image" alt="Pieza impresa en 3D por Modela3D" />
+            <div class="landing-story-stat">
+              <strong id="landing-product-count">—</strong>
+              <span>productos publicados</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="landing-process" aria-labelledby="landing-process-title">
+          <div class="landing-process-head">
+            <p class="eyebrow">Cómo trabajamos</p>
+            <h2 id="landing-process-title" class="landing-block-title">DE LA IDEA A TU CASA EN TRES PASOS</h2>
+          </div>
+          <ol class="landing-steps">
+            <li class="landing-step">
+              <span class="landing-step-number">01</span>
+              <h3>Elegís o nos contás tu idea</h3>
+              <p>Podés comprar una pieza del catálogo o escribirnos con una foto, un dibujo o una referencia.</p>
+            </li>
+            <li class="landing-step">
+              <span class="landing-step-number">02</span>
+              <h3>La diseñamos e imprimimos</h3>
+              <p>Definimos material, tamaño y terminación. Te mostramos cómo va a quedar antes de imprimir.</p>
+            </li>
+            <li class="landing-step">
+              <span class="landing-step-number">03</span>
+              <h3>La recibís en tu casa</h3>
+              <p>Preparamos el pedido con cuidado y coordinamos el envío a cualquier punto del país.</p>
+            </li>
+          </ol>
+        </section>
+
+        <section class="landing-final-cta" aria-labelledby="landing-final-title">
+          <div>
+            <p class="eyebrow">Hablemos</p>
+            <h2 id="landing-final-title" class="landing-block-title">¿TENÉS UNA IDEA PARA IMPRIMIR?</h2>
+            <p class="landing-final-text">Contanos qué necesitás y te respondemos con una propuesta clara, sin vueltas.</p>
+          </div>
+          <div class="landing-final-actions">
+            <button id="landing-cta-whatsapp-final" class="btn-primary" type="button">Escribir por WhatsApp</button>
+            <button id="landing-cta-shop-final" class="btn-ghost" type="button">Ver catálogo</button>
+          </div>
+        </section>
+      </section>
+
+      <section id="shop-view" class="view" aria-labelledby="shop-title">
         <div class="flash-strip" aria-label="Promocion destacada">
           <div class="flash-strip-track">
-            <p>Envío a todo el país · Envío a todo el país · Envío a todo el país · Envío a todo el país · Envío a todo el país · Envío a todo el país</p>
+            <p>ENVIO A TODO EL PAIS · ENVIO A TODO EL PAIS · ENVIO A TODO EL PAIS · ENVIO A TODO EL PAIS</p>
+            <p aria-hidden="true">ENVIO A TODO EL PAIS · ENVIO A TODO EL PAIS · ENVIO A TODO EL PAIS · ENVIO A TODO EL PAIS</p>
           </div>
         </div>
 
@@ -75,6 +218,14 @@
           <div class="hero-copy">
             <p class="eyebrow">Modela3D.ar Store</p>
             <h2 id="shop-title" class="hero-title">DISEÑO QUE SALE DE LA IMPRESORA, LISTO PARA TU ESPACIO</h2>
+            <p class="hero-subtitle">
+              Llaveros, jarras, soportes e insumos de impresión 3D con precios reales, delivery a todo el país
+              y atención directa de una persona que sabe del tema.
+            </p>
+            <div class="hero-actions">
+              <button id="hero-cta-catalog" class="btn-primary" type="button">Ver catálogo</button>
+              <button id="hero-cta-whatsapp" class="btn-ghost" type="button">Consultar por WhatsApp</button>
+            </div>
           </div>
 
           <div class="hero-media" aria-label="Galeria destacada">
@@ -88,6 +239,25 @@
             <div id="hero-dots" class="hero-dots"></div>
           </div>
         </div>
+
+        <section class="value-props" aria-label="Por que comprar en Modela3D">
+          <article class="value-prop">
+            <span class="value-prop-icon" aria-hidden="true">🚚</span>
+            <h3>ENVIO A TODO EL PAIS</h3>
+          </article>
+          <article class="value-prop">
+            <span class="value-prop-icon" aria-hidden="true">💳</span>
+            <h3>MERCADO PAGO</h3>
+          </article>
+          <article class="value-prop">
+            <span class="value-prop-icon" aria-hidden="true">💬</span>
+            <h3>ATENCION POR WHATSAPP</h3>
+          </article>
+          <article class="value-prop">
+            <span class="value-prop-icon" aria-hidden="true">🖨️</span>
+            <h3>INSUMOS Y PIEZAS 3D</h3>
+          </article>
+        </section>
 
         <section class="catalog-menu" aria-label="Filtros del catalogo">
           <div id="catalog-menu-backdrop" class="catalog-menu-backdrop" aria-hidden="true"></div>
@@ -121,6 +291,35 @@
                 <h3>Capacidad de jarras</h3>
                 <div id="jarra-size-chips" class="chips"></div>
               </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="catalog-toolbar" aria-label="Buscar y navegar el catalogo">
+          <div class="catalog-toolbar-head">
+            <div class="catalog-toolbar-headings">
+              <p class="eyebrow">Catalogo</p>
+              <h2 class="catalog-toolbar-title" id="catalog-toolbar-title">Productos</h2>
+              <p class="catalog-toolbar-count" id="catalog-toolbar-count"></p>
+            </div>
+            <div class="catalog-search" id="catalog-search-wrap">
+              <span class="catalog-search-icon" aria-hidden="true">🔍</span>
+              <input
+                id="catalog-search"
+                type="search"
+                placeholder="Buscar productos por nombre..."
+                aria-label="Buscar productos"
+                autocomplete="off"
+              />
+              <button
+                id="catalog-search-clear"
+                class="catalog-search-clear"
+                type="button"
+                aria-label="Limpiar busqueda"
+                hidden
+              >
+                ×
+              </button>
             </div>
           </div>
         </section>
@@ -186,6 +385,50 @@
         </section>
 
         <section id="products-sections" class="products-sections"></section>
+
+        <footer class="site-footer">
+          <div class="footer-grid">
+            <div class="footer-brand">
+              <div class="brand-logo" aria-hidden="true">
+                <img class="brand-logo-image" src="assets/logo.png" alt="" />
+              </div>
+              <div>
+                <strong>Modela3D.ar</strong>
+                <p>Impresion 3D personalizada, insumos e impresoras.</p>
+              </div>
+            </div>
+
+            <div class="footer-col">
+              <h4>Categorias</h4>
+              <ul>
+                <li><button type="button" data-footer-section="Productos">Productos</button></li>
+                <li><button type="button" data-footer-section="Insumos">Insumos</button></li>
+                <li><button type="button" data-footer-section="Impresoras 3D">Impresoras 3D</button></li>
+              </ul>
+            </div>
+
+            <div class="footer-col">
+              <h4>Ayuda</h4>
+              <ul>
+                <li><button type="button" id="footer-whatsapp">Consultar por WhatsApp</button></li>
+                <li><button type="button" id="footer-cart">Ver mi carrito</button></li>
+              </ul>
+            </div>
+
+            <div class="footer-col">
+              <h4>Metodos de pago</h4>
+              <ul>
+                <li>Mercado Pago</li>
+                <li>Pesos Argentinos (ARS)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="footer-bottom">
+            <span>&copy; <span id="footer-year">2026</span> Modela3D.ar</span>
+            <span>Envios a todo el pais</span>
+          </div>
+        </footer>
       </section>
 
       <section id="admin-view" class="view" aria-labelledby="admin-title">
@@ -546,6 +789,7 @@
       </article>
     </template>
 
-    <script src="app.js?v=20260801a"></script>
+    <script src="catalog-utils.js?v=20261023-lamparas"></script>
+    <script src="app.js?v=20261023-lamparas"></script>
   </body>
 </html>

@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
 };
 
 const CLOUD_ENDPOINT = "/.netlify/functions/store";
+const PRODUCTION_CLOUD_ENDPOINT = "https://modela3dar.netlify.app/.netlify/functions/store";
 const CUSTOMER_AUTH_ENDPOINT = "/.netlify/functions/customer-auth";
 const EMAIL_AUTH_ENDPOINT = "/.netlify/functions/email-auth";
 const ORDERS_ENDPOINT = "/.netlify/functions/orders";
@@ -35,11 +36,19 @@ const IMAGE_UPLOAD_CONFIG = {
   },
 };
 
+const CatalogUtils = typeof window !== "undefined" && window.Modela3dCatalogUtils ? window.Modela3dCatalogUtils : {};
 const SHOP_SECTIONS = ["Productos", "Insumos", "Impresoras 3D"];
-const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes", "Personaliza tu llavero"];
+const PRODUCT_SUBSECTIONS = CatalogUtils.PRODUCT_SUBSECTIONS || ["Llaveros", "Jarras", "Hogar", "Lamparas", "Soportes"];
 const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
 const IMPRESORAS_SUBSECTIONS = ["Impresora 3D"];
 const JARRA_SIZES = ["500ml", "1 litro"];
+const LANDING_CATEGORIES = CatalogUtils.LANDING_CATEGORIES || [
+  { category: "Llaveros", label: "Llaveros", caption: "Regalos con nombre" },
+  { category: "Jarras", label: "Jarras", caption: "Para tu mate y tu mesa" },
+  { category: "Hogar", label: "Hogar", caption: "Detalles que ordenan" },
+  { category: "Lamparas", label: "Lamparas", caption: "Luz y estilo para cada rincón" },
+  { category: "Soportes", label: "Soportes", caption: "Para tu setup" },
+];
 
 const SECTION_SUBSECTIONS = {
   Productos: PRODUCT_SUBSECTIONS,
@@ -138,10 +147,13 @@ const DEMO_PRODUCTS = [
 const state = {
   products: loadFromStorage(STORAGE_KEYS.products, []),
   cart: loadFromStorage(STORAGE_KEYS.cart, {}),
-  activeView: "shop",
+  activeView: "landing",
   activeSection: "Productos",
   activeCategory: "Llaveros",
   activeJarraSize: "Todas",
+  catalogQuery: "",
+  catalogLoading: false,
+  catalogSearchTimerId: null,
   insumosFilters: {
     query: "",
     sort: "relevancia",
@@ -152,6 +164,9 @@ const state = {
   heroSlides: loadFromStorage(STORAGE_KEYS.heroSlides, []),
   heroSlideIndex: 0,
   heroTimerId: null,
+  landingSlideIndex: 0,
+  landingTimerId: null,
+  landingCategoryImages: {},
   pendingProductFiles: [],
   pendingHeroFiles: [],
   editingProductId: "",
@@ -163,6 +178,8 @@ const state = {
   cloudWarningShown: false,
   productImageById: {},
   productImageFetchInFlight: {},
+  productGalleryById: {},
+  productGalleryFetchInFlight: {},
   lightbox: {
     images: [],
     index: 0,
@@ -187,12 +204,25 @@ const state = {
 const el = {
   viewButtons: Array.from(document.querySelectorAll(".view-btn[data-view]")),
   adminViewButton: document.querySelector('.view-btn[data-view="admin"]'),
-  brandLogo: document.getElementById("brand-logo"),
+  brandLogo: document.querySelector(".brand-logo-button"),
   views: {
+    landing: document.getElementById("landing-view"),
     shop: document.getElementById("shop-view"),
     admin: document.getElementById("admin-view"),
   },
+  landingCarouselImage: document.getElementById("landing-carousel-image"),
+  landingPrev: document.getElementById("landing-prev"),
+  landingNext: document.getElementById("landing-next"),
+  landingDots: document.getElementById("landing-dots"),
+  landingCategories: document.getElementById("landing-categories"),
+  landingStoryImage: document.getElementById("landing-story-image"),
+  landingProductCount: document.getElementById("landing-product-count"),
+  landingCtaAll: document.getElementById("landing-cta-all"),
+  landingCtaCustom: document.getElementById("landing-cta-custom"),
+  landingCtaWhatsappFinal: document.getElementById("landing-cta-whatsapp-final"),
+  landingCtaShopFinal: document.getElementById("landing-cta-shop-final"),
   catalogMenuToggle: document.getElementById("catalog-menu-toggle"),
+
   catalogMenuBack: document.getElementById("catalog-menu-back"),
   catalogMenuTitle: document.getElementById("catalog-menu-title"),
   catalogMenuClose: document.getElementById("catalog-menu-close"),
@@ -215,6 +245,16 @@ const el = {
   insumosMaterialFilters: document.getElementById("insumos-material-filters"),
   productsSections: document.getElementById("products-sections"),
   productCardTemplate: document.getElementById("product-card-template"),
+  catalogToolbarTitle: document.getElementById("catalog-toolbar-title"),
+  catalogToolbarCount: document.getElementById("catalog-toolbar-count"),
+  catalogSearch: document.getElementById("catalog-search"),
+  catalogSearchClear: document.getElementById("catalog-search-clear"),
+  catalogSearchWrap: document.getElementById("catalog-search-wrap"),
+  heroCtaCatalog: document.getElementById("hero-cta-catalog"),
+  heroCtaWhatsapp: document.getElementById("hero-cta-whatsapp"),
+  footerWhatsapp: document.getElementById("footer-whatsapp"),
+  footerCart: document.getElementById("footer-cart"),
+  footerYear: document.getElementById("footer-year"),
   heroCarouselImage: document.getElementById("hero-carousel-image"),
   heroPrev: document.getElementById("hero-prev"),
   heroNext: document.getElementById("hero-next"),
@@ -312,6 +352,9 @@ async function init() {
   }
 
   el.waNumber.value = state.waNumber;
+  if (el.footerYear) {
+    el.footerYear.textContent = String(new Date().getFullYear());
+  }
   populateAdminSubsections(normalizeSection(el.productSection.value));
   toggleJarraExtraFields(normalizeSection(el.productSection.value) === "Productos" && el.productCategory.value === "Jarras");
   toggleInsumoExtraFields(normalizeSection(el.productSection.value) === "Insumos");
@@ -325,8 +368,10 @@ async function init() {
   bindCatalogKeychainCustomizer();
   setCatalogMenuOpen(false, true);
   renderAll();
+  startLandingAutoplay();
 
   await hydrateFromCloud();
+  startLandingAutoplay();
 }
 
 function bindCatalogKeychainCustomizer() {
@@ -336,7 +381,26 @@ function bindCatalogKeychainCustomizer() {
 
   const updatePreview = (logoDataUrl = "", text = "") => {
     const safeText = String(text || "").trim() || "Modela3D";
-    el.keychainPreviewName.textContent = safeText;
+    const normalizedText = safeText.replace(/\s+/g, " ").trim();
+    const displayText = normalizedText.length > 16 ? normalizedText.slice(0, 16) : normalizedText;
+    const tagWidth = Math.min(370, Math.max(180, 110 + displayText.length * 18));
+    const tagHeight = logoDataUrl ? 126 : 118;
+
+    el.keychainPreviewName.textContent = displayText;
+    el.keychainPreviewName.style.fontSize = `${Math.max(2.1, 6.1 - displayText.length * 0.18)}rem`;
+    el.keychainPreviewName.style.minWidth = `${tagWidth}px`;
+    el.keychainPreviewName.style.maxWidth = `${tagWidth}px`;
+    el.keychainPreviewName.style.padding = "0.65rem 1.2rem";
+    el.keychainPreviewName.style.borderRadius = "18px";
+
+    const preview = el.keychainPreviewName.closest(".keychain-preview");
+    if (preview) {
+      preview.style.setProperty("--tag-width", `${tagWidth}px`);
+      preview.style.setProperty("--tag-height", `${tagHeight}px`);
+    }
+
+    el.keychainPreviewArt.style.width = logoDataUrl ? "100%" : "60%";
+    el.keychainPreviewArt.style.height = logoDataUrl ? "100%" : "62%";
     el.keychainPreviewArt.innerHTML = "";
 
     if (logoDataUrl) {
@@ -346,6 +410,7 @@ function bindCatalogKeychainCustomizer() {
       img.className = "keychain-preview-image";
       el.keychainPreviewArt.appendChild(img);
       el.keychainPreviewArt.classList.add("has-logo");
+      el.keychainPreviewArt.textContent = "";
       return;
     }
 
@@ -382,9 +447,82 @@ function bindEvents() {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
-  el.brandLogo.addEventListener("click", () => {
+  el.brandLogo?.addEventListener("click", (event) => {
+    event.preventDefault();
     scrollToHeader();
+    switchView("landing");
     handleHiddenAdminTap();
+  });
+
+  document.getElementById("landing-cta-shop")?.addEventListener("click", () => {
+    switchView("shop");
+    scrollToCatalog();
+  });
+
+  document.getElementById("landing-cta-whatsapp")?.addEventListener("click", () => {
+    openWhatsappFromStorefront();
+  });
+
+  const goToCatalog = () => {
+    switchView("shop");
+    scrollToCatalog();
+  };
+
+  el.landingCtaAll?.addEventListener("click", goToCatalog);
+  el.landingCtaShopFinal?.addEventListener("click", goToCatalog);
+
+  const openCustomInquiry = () => {
+    const opened = openWhatsAppWithMessage("Hola, quiero encargar una pieza 3D personalizada.");
+    if (opened) {
+      showToast("Abrimos WhatsApp para tu idea", "success");
+    }
+  };
+
+  el.landingCtaCustom?.addEventListener("click", openCustomInquiry);
+  el.landingCtaWhatsappFinal?.addEventListener("click", openCustomInquiry);
+
+  el.catalogSearch?.addEventListener("input", (event) => {
+    const value = event.target.value;
+    if (el.catalogSearchClear) {
+      el.catalogSearchClear.hidden = !value;
+    }
+    scheduleCatalogSearch(value);
+  });
+
+  el.catalogSearch?.addEventListener("search", (event) => {
+    const value = event.target.value;
+    if (el.catalogSearchClear) {
+      el.catalogSearchClear.hidden = !value;
+    }
+    scheduleCatalogSearch(value);
+  });
+
+  el.catalogSearchClear?.addEventListener("click", () => {
+    clearCatalogSearch();
+    el.catalogSearch?.focus();
+  });
+
+  el.heroCtaCatalog?.addEventListener("click", () => {
+    scrollToCatalog();
+  });
+
+  el.heroCtaWhatsapp?.addEventListener("click", () => {
+    openWhatsappFromStorefront();
+  });
+
+  el.footerWhatsapp?.addEventListener("click", () => {
+    openWhatsappFromStorefront();
+  });
+
+  el.footerCart?.addEventListener("click", () => {
+    setCartOpen(true);
+  });
+
+  document.querySelectorAll("[data-footer-section]").forEach((button) => {
+    button.addEventListener("click", () => {
+      handleCatalogSectionSelection(button.dataset.footerSection);
+      scrollToCatalog();
+    });
   });
 
   el.catalogMenuToggle?.addEventListener("click", () => {
@@ -435,6 +573,32 @@ function bindEvents() {
 
     if (action === "quote") {
       handleCatalogQuoteRequest();
+    }
+  });
+
+  el.footerYear?.addEventListener("click", () => {
+    // noop
+  });
+
+  el.landingPrev?.addEventListener("click", () => {
+    moveLandingSlide(-1);
+    resetLandingAutoplay();
+  });
+
+  el.landingNext?.addEventListener("click", () => {
+    moveLandingSlide(1);
+    resetLandingAutoplay();
+  });
+
+  el.landingDots?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    if (target.matches(".landing-dot")) {
+      const index = Number(target.dataset.landingIndex || 0);
+      setLandingSlide(index);
+      resetLandingAutoplay();
     }
   });
 
@@ -793,37 +957,37 @@ function bindEvents() {
 
     const files = [...state.pendingHeroFiles];
     if (!files.length) {
-      alert("Subi al menos una imagen para el carrusel.");
+      alert("Subi al menos una imagen o video para el carrusel.");
       return;
     }
 
     if (files.length > HERO_MAX_IMAGES) {
-      alert(`Para que funcione bien en celular, el carrusel permite hasta ${HERO_MAX_IMAGES} imagenes por vez.`);
+      alert(`Para que funcione bien en celular, el carrusel permite hasta ${HERO_MAX_IMAGES} archivos por vez.`);
       return;
     }
 
     setHeroSubmitLoading(true);
 
     try {
-      let images;
-      images = await Promise.all(
+      const mediaSources = await Promise.all(
         files.map((file) =>
-          processImageFile(file, {
+          processHeroMediaFile(file, {
             maxWidth: IMAGE_UPLOAD_CONFIG.hero.maxWidth,
             maxHeight: IMAGE_UPLOAD_CONFIG.hero.maxHeight,
             quality: IMAGE_UPLOAD_CONFIG.hero.quality,
           })
         )
       );
-      const normalized = normalizeHeroSlides(images);
+      const normalized = normalizeHeroSlides(mediaSources);
 
       if (!normalized.length) {
-        alert("No se pudieron procesar las imagenes.");
+        alert("No se pudieron procesar las imagenes o videos.");
         return;
       }
 
       state.heroSlides = normalized;
       state.heroSlideIndex = 0;
+      state.landingSlideIndex = 0;
       if (!persistHeroSlides()) {
         return;
       }
@@ -831,13 +995,15 @@ function bindEvents() {
       await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
 
       renderHeroCarousel();
+      renderLandingCarousel();
       startHeroAutoplay();
+      startLandingAutoplay();
       state.pendingHeroFiles = [];
       el.heroImagesInput.value = "";
       el.heroImagePreview.innerHTML = "";
       alert("Carrusel actualizado.");
     } catch {
-      alert("No se pudieron procesar o sincronizar las imagenes del carrusel.");
+      alert("No se pudieron procesar o sincronizar las imagenes o videos del carrusel.");
     } finally {
       setHeroSubmitLoading(false);
     }
@@ -1242,8 +1408,14 @@ function switchView(viewName) {
   });
 
   Object.entries(el.views).forEach(([name, view]) => {
-    view.classList.toggle("active", name === viewName);
+    if (view) {
+      view.classList.toggle("active", name === viewName);
+    }
   });
+
+  if (viewName === "shop") {
+    scrollToCatalog();
+  }
 
   updateShopBrowsingState();
 }
@@ -1276,11 +1448,337 @@ function handleHiddenAdminTap() {
   }
 }
 
-function scrollToHeader() {
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
+function getLandingSlides() {
+  const slides = normalizeHeroSlides(state.heroSlides);
+  if (slides.length) {
+    return slides;
+  }
+
+  const fallback = buildDefaultHeroSlides(state.products);
+  return fallback.length ? fallback : [buildMissingImagePlaceholder("Modela3D")];
+}
+
+function renderLandingCarousel() {
+  if (!el.landingCarouselImage || !el.landingDots) {
+    return;
+  }
+
+  const slides = getLandingSlides();
+  if (!slides.length) {
+    el.landingCarouselImage.removeAttribute("src");
+    el.landingCarouselImage.alt = "Sin videos destacados";
+    el.landingDots.innerHTML = "";
+    return;
+  }
+
+  if (state.landingSlideIndex >= slides.length) {
+    state.landingSlideIndex = 0;
+  }
+  if (state.landingSlideIndex < 0) {
+    state.landingSlideIndex = slides.length - 1;
+  }
+
+  const activeUrl = slides[state.landingSlideIndex];
+  const isVideoSlide = /\.(mp4|webm|mov|m4v|avi)(?:$|\?)/i.test(activeUrl) || activeUrl.includes("video");
+
+  if (el.landingCarouselImage.tagName === "VIDEO") {
+    el.landingCarouselImage.muted = true;
+    el.landingCarouselImage.autoplay = true;
+    el.landingCarouselImage.loop = slides.length <= 1;
+    el.landingCarouselImage.playsInline = true;
+    el.landingCarouselImage.setAttribute("playsinline", "true");
+    el.landingCarouselImage.setAttribute("aria-label", isVideoSlide ? "Video destacado Modela3D" : "Video destacado Modela3D");
+    el.landingCarouselImage.src = activeUrl;
+    el.landingCarouselImage.alt = "Video destacado Modela3D";
+    el.landingCarouselImage.onended = () => {
+      if (slides.length > 1) {
+        moveLandingSlide(1);
+      }
+    };
+    el.landingCarouselImage.load();
+    el.landingCarouselImage.play().catch(() => {});
+  } else {
+    el.landingCarouselImage.src = activeUrl;
+    el.landingCarouselImage.alt = "Productos destacados Modela3D.ar";
+  }
+
+  el.landingDots.innerHTML = "";
+  slides.forEach((_, index) => {
+    const dot = document.createElement("button");
+    dot.className = "landing-dot";
+    dot.type = "button";
+    dot.dataset.landingIndex = String(index);
+    dot.setAttribute("aria-label", `Ir a ${isVideoSlide ? "video" : "imagen"} ${index + 1}`);
+    dot.classList.toggle("active", index === state.landingSlideIndex);
+    el.landingDots.appendChild(dot);
   });
+}
+
+function setLandingSlide(index) {
+  const slides = getLandingSlides();
+  if (!slides.length) {
+    return;
+  }
+  state.landingSlideIndex = (index + slides.length) % slides.length;
+  renderLandingCarousel();
+}
+
+function moveLandingSlide(delta) {
+  setLandingSlide(state.landingSlideIndex + delta);
+}
+
+function startLandingAutoplay() {
+  stopLandingAutoplay();
+  const slides = getLandingSlides();
+  if (slides.length <= 1) {
+    return;
+  }
+  state.landingTimerId = window.setInterval(() => {
+    moveLandingSlide(1);
+  }, 5000);
+}
+
+function stopLandingAutoplay() {
+  if (state.landingTimerId) {
+    window.clearInterval(state.landingTimerId);
+    state.landingTimerId = null;
+  }
+}
+
+function resetLandingAutoplay() {
+  startLandingAutoplay();
+}
+
+function openLandingCategory(category) {
+  state.activeSection = "Productos";
+  state.activeCategory = category;
+  state.activeJarraSize = "Todas";
+  state.catalogBrowsingStarted = true;
+  renderSectionChips();
+  renderProductSubsectionChips();
+  renderJarraSizeChips();
+  updateCatalogVisibility();
+  updateShopBrowsingState();
+  renderProducts();
+  switchView("shop");
+}
+
+function renderLandingContent() {
+  if (!el.landingCategories) {
+    return;
+  }
+
+  const products = state.products.filter((product) => normalizeSection(product.section) === "Productos");
+  const productCount = state.products.length;
+  if (el.landingProductCount) {
+    el.landingProductCount.textContent = productCount ? String(productCount) : "—";
+  }
+
+  const slides = getLandingSlides();
+  if (el.landingStoryImage) {
+    el.landingStoryImage.src = slides[1] || slides[0] || buildMissingImagePlaceholder("Modela3D");
+  }
+
+  el.landingCategories.innerHTML = "";
+  LANDING_CATEGORIES.forEach((definition) => {
+    const categoryProducts = products.filter((product) => product.category === definition.category);
+    const coverProduct = categoryProducts[0];
+    const tile = document.createElement("button");
+    tile.className = "landing-category-card";
+    tile.type = "button";
+    tile.dataset.category = definition.category;
+    tile.setAttribute("aria-label", `Ver ${definition.label}`);
+
+    const image = document.createElement("img");
+    image.className = "landing-category-image";
+    image.alt = "";
+    image.loading = "lazy";
+    const categoryImage = state.landingCategoryImages[definition.category] || getRenderableProductImage(coverProduct, 0);
+    image.src = categoryImage || buildMissingImagePlaceholder(definition.label);
+
+    const overlay = document.createElement("span");
+    overlay.className = "landing-category-overlay";
+    overlay.setAttribute("aria-hidden", "true");
+
+    const copy = document.createElement("span");
+    copy.className = "landing-category-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = definition.label;
+
+    const caption = document.createElement("span");
+    caption.textContent = definition.caption;
+
+    const count = document.createElement("span");
+    count.className = "landing-category-count";
+    count.textContent = `${categoryProducts.length} ${categoryProducts.length === 1 ? "producto" : "productos"}`;
+
+    copy.append(title, caption, count);
+    tile.append(image, overlay, copy);
+    tile.addEventListener("click", () => openLandingCategory(definition.category));
+    el.landingCategories.appendChild(tile);
+
+    if (coverProduct) {
+      void loadLandingCategoryImage(definition.category, coverProduct, image);
+    }
+  });
+}
+
+async function loadLandingCategoryImage(category, product, imageNode) {
+  const cached = state.landingCategoryImages[category];
+  if (cached) {
+    imageNode.src = cached;
+    return;
+  }
+
+  const productImage = getRenderableProductImage(product, 0);
+  if (productImage) {
+    state.landingCategoryImages[category] = productImage;
+    return;
+  }
+
+  const image = await fetchProductImageFromCloud(product.id);
+  if (!image) {
+    return;
+  }
+
+  state.landingCategoryImages[category] = image;
+  if (imageNode.isConnected) {
+    imageNode.src = image;
+  }
+}
+
+function scrollToCatalog() {
+  const target = document.getElementById("catalog-toolbar-title") || document.getElementById("products-sections");
+  if (!target) {
+    return;
+  }
+
+  const top = target.getBoundingClientRect().top + window.scrollY - 96;
+  window.scrollTo({ top, behavior: "smooth" });
+}
+
+function openWhatsappFromStorefront() {
+  const opened = openWhatsAppWithMessage("Hola, quiero consultar por productos de Modela3D.ar.");
+  if (opened) {
+    showToast("Abrimos WhatsApp para tu consulta", "success");
+  }
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function matchesCatalogQuery(product) {
+  const query = normalizeSearchText(state.catalogQuery);
+  if (!query) {
+    return true;
+  }
+
+  const haystack = normalizeSearchText(
+    [product.name, product.description, product.category, product.brand, product.material].join(" ")
+  );
+  return haystack.includes(query);
+}
+
+function scheduleCatalogSearch(value) {
+  if (state.catalogSearchTimerId) {
+    window.clearTimeout(state.catalogSearchTimerId);
+  }
+
+  state.catalogSearchTimerId = window.setTimeout(() => {
+    state.catalogSearchTimerId = null;
+    state.catalogQuery = String(value || "").trim();
+    renderProducts();
+  }, 220);
+}
+
+function clearCatalogSearch() {
+  if (state.catalogSearchTimerId) {
+    window.clearTimeout(state.catalogSearchTimerId);
+    state.catalogSearchTimerId = null;
+  }
+
+  state.catalogQuery = "";
+  if (el.catalogSearch) {
+    el.catalogSearch.value = "";
+  }
+  if (el.catalogSearchClear) {
+    el.catalogSearchClear.hidden = true;
+  }
+  renderProducts();
+}
+
+function updateCatalogToolbar(count, label) {
+  if (el.catalogToolbarTitle) {
+    el.catalogToolbarTitle.textContent = label || state.activeSection;
+  }
+
+  if (el.catalogToolbarCount) {
+    el.catalogToolbarCount.textContent = count === 1 ? "1 producto" : `${count} productos`;
+  }
+}
+
+function renderCatalogSkeleton(container) {
+  container.innerHTML = "";
+
+  const grid = document.createElement("div");
+  grid.className = "skeleton-grid";
+  grid.setAttribute("aria-hidden", "true");
+
+  for (let index = 0; index < 8; index += 1) {
+    const card = document.createElement("div");
+    card.className = "skeleton-card";
+
+    const media = document.createElement("div");
+    media.className = "skeleton-block skeleton-media";
+
+    const line = document.createElement("div");
+    line.className = "skeleton-block skeleton-line";
+
+    const shortLine = document.createElement("div");
+    shortLine.className = "skeleton-block skeleton-line short";
+
+    card.appendChild(media);
+    card.appendChild(line);
+    card.appendChild(shortLine);
+    grid.appendChild(card);
+  }
+
+  container.appendChild(grid);
+}
+
+function renderCatalogEmptyState(container, options) {
+  container.innerHTML = "";
+
+  const empty = document.createElement("div");
+  empty.className = "empty";
+
+  const title = document.createElement("p");
+  title.className = "empty-title";
+  title.textContent = options.title;
+
+  const description = document.createElement("p");
+  description.className = "empty-description";
+  description.textContent = options.description;
+
+  empty.appendChild(title);
+  empty.appendChild(description);
+
+  if (options.actionLabel && typeof options.onAction === "function") {
+    const button = document.createElement("button");
+    button.className = "btn-ghost";
+    button.type = "button";
+    button.textContent = options.actionLabel;
+    button.addEventListener("click", options.onAction);
+    empty.appendChild(button);
+  }
+
+  container.appendChild(empty);
 }
 
 async function attemptAdminUnlock() {
@@ -1344,6 +1842,8 @@ function updateShopBrowsingState() {
 
 function renderAll() {
   renderHeroCarousel();
+  renderLandingCarousel();
+  renderLandingContent();
   renderSectionChips();
   renderProductSubsectionChips();
   renderJarraSizeChips();
@@ -1357,77 +1857,82 @@ function renderAll() {
 }
 
 async function hydrateFromCloud() {
-  if (isLocalFileMode()) {
-    return;
-  }
+  state.catalogLoading = true;
+  renderProducts();
 
-  const [cloudProductsResult, cloudHeroSlidesResult, cloudWaNumberResult] = await Promise.all([
-    fetchCloudState(CLOUD_KEYS.products),
-    fetchCloudState(CLOUD_KEYS.heroSlides),
-    fetchCloudState(CLOUD_KEYS.waNumber),
-  ]);
+  try {
+    const [cloudProductsResult, cloudHeroSlidesResult, cloudWaNumberResult] = await Promise.all([
+      fetchCloudState(CLOUD_KEYS.products),
+      fetchCloudState(CLOUD_KEYS.heroSlides),
+      fetchCloudState(CLOUD_KEYS.waNumber),
+    ]);
 
-  if (cloudProductsResult.ok) {
-    if (Array.isArray(cloudProductsResult.data)) {
-      const localById = new Map(
-        state.products.map((product) => [String(product.id || "").trim(), product])
-      );
+    if (cloudProductsResult.ok) {
+      if (Array.isArray(cloudProductsResult.data)) {
+        const localById = new Map(
+          state.products.map((product) => [String(product.id || "").trim(), product])
+        );
 
-      state.products = cloudProductsResult.data.map((rawProduct) => {
-        const normalized = normalizeProduct(rawProduct);
-        const local = localById.get(String(normalized.id || "").trim());
-        const hasCloudImages = Array.isArray(normalized.images) && normalized.images.length > 0;
-        const hasLocalImages = Array.isArray(local?.images) && local.images.length > 0;
+        state.products = cloudProductsResult.data.map((rawProduct) => {
+          const normalized = normalizeProduct(rawProduct);
+          const local = localById.get(String(normalized.id || "").trim());
+          const hasCloudImages = Array.isArray(normalized.images) && normalized.images.length > 0;
+          const hasLocalImages = Array.isArray(local?.images) && local.images.length > 0;
 
-        if (!hasCloudImages && hasLocalImages) {
-          return {
-            ...normalized,
-            images: local.images,
-          };
-        }
+          if (!hasCloudImages && hasLocalImages) {
+            return {
+              ...normalized,
+              images: local.images,
+            };
+          }
 
-        return normalized;
-      });
-      persistProducts();
-    } else if (cloudProductsResult.data === null && state.products.length && state.adminKey) {
-      await syncStateToCloud(CLOUD_KEYS.products, state.products);
+          return normalized;
+        });
+        persistProducts();
+      } else if (cloudProductsResult.data === null && state.products.length && state.adminKey) {
+        await syncStateToCloud(CLOUD_KEYS.products, state.products);
+      }
     }
-  }
 
-  if (cloudHeroSlidesResult.ok) {
-    if (Array.isArray(cloudHeroSlidesResult.data)) {
-      state.heroSlides = normalizeHeroSlides(cloudHeroSlidesResult.data);
-      persistHeroSlides();
-    } else if (cloudHeroSlidesResult.data === null && state.heroSlides.length && state.adminKey) {
-      await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
+    if (cloudHeroSlidesResult.ok) {
+      if (Array.isArray(cloudHeroSlidesResult.data)) {
+        state.heroSlides = normalizeHeroSlides(cloudHeroSlidesResult.data);
+        persistHeroSlides();
+      } else if (cloudHeroSlidesResult.data === null && state.heroSlides.length && state.adminKey) {
+        await syncStateToCloud(CLOUD_KEYS.heroSlides, state.heroSlides);
+      }
     }
-  }
 
-  if (cloudWaNumberResult.ok) {
-    if (typeof cloudWaNumberResult.data === "string") {
-      state.waNumber = sanitizeWaNumber(cloudWaNumberResult.data);
-      localStorage.setItem(STORAGE_KEYS.waNumber, state.waNumber);
-      el.waNumber.value = state.waNumber;
-    } else if (cloudWaNumberResult.data === null && state.waNumber && state.adminKey) {
-      await syncStateToCloud(CLOUD_KEYS.waNumber, state.waNumber);
+    if (cloudWaNumberResult.ok) {
+      if (typeof cloudWaNumberResult.data === "string") {
+        state.waNumber = sanitizeWaNumber(cloudWaNumberResult.data);
+        localStorage.setItem(STORAGE_KEYS.waNumber, state.waNumber);
+        el.waNumber.value = state.waNumber;
+      } else if (cloudWaNumberResult.data === null && state.waNumber && state.adminKey) {
+        await syncStateToCloud(CLOUD_KEYS.waNumber, state.waNumber);
+      }
     }
+  } finally {
+    state.catalogLoading = false;
+    renderAll();
   }
-
-  renderAll();
 }
 
 function isLocalFileMode() {
   return window.location.protocol === "file:";
 }
 
-async function fetchCloudState(key) {
-  if (isLocalFileMode()) {
-    return { ok: false, data: null };
-  }
+function getCloudEndpointForRequest() {
+  return isLocalFileMode() ? PRODUCTION_CLOUD_ENDPOINT : CLOUD_ENDPOINT;
+}
 
+async function fetchCloudState(key) {
   try {
+    const requestUrl = new URL(getCloudEndpointForRequest());
+    requestUrl.searchParams.set("key", key);
+
     const response = await fetchWithTimeout(
-      `${CLOUD_ENDPOINT}?key=${encodeURIComponent(key)}`,
+      requestUrl.toString(),
       {},
       CLOUD_TIMEOUT_MS
     );
@@ -1660,6 +2165,13 @@ function setHeroSlide(nextIndex) {
   renderHeroCarousel();
 }
 
+function scrollToHeader() {
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}
+
 function startHeroAutoplay() {
   stopHeroAutoplay();
   const slides = normalizeHeroSlides(state.heroSlides);
@@ -1721,13 +2233,32 @@ function renderProductSubsectionChips() {
 
   el.productSubsectionTitle.textContent = state.activeSection;
   const subsectionOptions = getSubsectionsBySection(state.activeSection);
+  const countsBySubsection = new Map();
 
-  if (!subsectionOptions.includes(state.activeCategory)) {
-    state.activeCategory = subsectionOptions[0] || "Todas";
+  state.products.forEach((product) => {
+    if (normalizeSection(product.section) !== state.activeSection) {
+      return;
+    }
+
+    const subsection = normalizeSubsection(product.section, product.category);
+    countsBySubsection.set(subsection, (countsBySubsection.get(subsection) || 0) + 1);
+  });
+
+  const visibleSubsections = subsectionOptions.filter((subsection) => {
+    if (countsBySubsection.has(subsection)) {
+      return countsBySubsection.get(subsection) > 0;
+    }
+    return subsection === state.activeCategory || subsection === "Hogar" || subsection === "Lamparas";
+  });
+
+  const resolvedSubsections = visibleSubsections.length ? visibleSubsections : subsectionOptions;
+
+  if (!resolvedSubsections.includes(state.activeCategory)) {
+    state.activeCategory = resolvedSubsections[0] || "Todas";
   }
 
   el.productSubsectionChips.innerHTML = "";
-  subsectionOptions.forEach((subsection) => {
+  resolvedSubsections.forEach((subsection) => {
     const button = document.createElement("button");
     button.className = "chip";
     button.textContent = subsection;
@@ -1785,6 +2316,7 @@ function updateCatalogVisibility() {
   const isInsumos = state.activeSection === "Insumos";
   el.productsSections.classList.toggle("hidden-block", isInsumos);
   el.insumosShell.classList.toggle("hidden-block", !isInsumos);
+  el.catalogSearchWrap?.classList.toggle("hidden-block", isInsumos);
 }
 
 function renderProducts() {
@@ -1799,11 +2331,12 @@ function renderProducts() {
 function renderProductCatalog() {
   const customizer = document.getElementById("customizer-shell");
   if (customizer) {
-    customizer.classList.toggle("hidden-block", state.activeCategory !== "Personaliza tu llavero");
+    customizer.classList.add("hidden-block");
   }
 
-  if (state.activeCategory === "Personaliza tu llavero") {
-    el.productsSections.innerHTML = "";
+  if (state.catalogLoading) {
+    renderCatalogSkeleton(el.productsSections);
+    updateCatalogToolbar(0, state.activeCategory);
     return;
   }
 
@@ -1815,10 +2348,22 @@ function renderProductCatalog() {
     sourceProducts = sourceProducts.filter((product) => normalizeJarraSize(product.jarraSize) === state.activeJarraSize);
   }
 
+  sourceProducts = sourceProducts.filter((product) => matchesCatalogQuery(product));
+
   el.productsSections.innerHTML = "";
+  updateCatalogToolbar(sourceProducts.length, state.activeCategory);
 
   if (!sourceProducts.length) {
-    el.productsSections.innerHTML = `<p class="empty">No hay productos para mostrar en ${state.activeCategory}.</p>`;
+    renderCatalogEmptyState(el.productsSections, {
+      title: state.catalogQuery
+        ? `Sin resultados para "${state.catalogQuery}"`
+        : `No hay productos para mostrar en ${state.activeCategory}.`,
+      description: state.catalogQuery
+        ? "Probá con otro termino o mirá el catalogo completo."
+        : "Probá otra categoria o escribinos por WhatsApp.",
+      actionLabel: state.catalogQuery ? "Limpiar busqueda" : "",
+      onAction: state.catalogQuery ? () => clearCatalogSearch() : null,
+    });
     return;
   }
 
@@ -1841,13 +2386,24 @@ function renderProductCatalog() {
 }
 
 function renderInsumosCatalog() {
+  if (state.catalogLoading) {
+    el.insumosCount.textContent = "Cargando productos...";
+    renderCatalogSkeleton(el.insumosResultsGrid);
+    updateCatalogToolbar(0, "Insumos");
+    return;
+  }
+
   const sourceProducts = getFilteredInsumosProducts();
 
   el.insumosResultsGrid.innerHTML = "";
   el.insumosCount.textContent = `${sourceProducts.length} producto(s)`;
+  updateCatalogToolbar(sourceProducts.length, "Insumos");
 
   if (!sourceProducts.length) {
-    el.insumosResultsGrid.innerHTML = '<p class="empty">No encontramos insumos con esos filtros.</p>';
+    renderCatalogEmptyState(el.insumosResultsGrid, {
+      title: "No encontramos insumos con esos filtros.",
+      description: "Quita algun filtro o escribinos por WhatsApp para buscar una marca puntual.",
+    });
     return;
   }
 
@@ -1872,6 +2428,7 @@ function renderInsumosCatalog() {
 function buildProductCard(product) {
   const fragment = el.productCardTemplate.content.cloneNode(true);
   const card = fragment.querySelector(".product-card");
+  const imageWrap = fragment.querySelector(".image-wrap");
   const image = fragment.querySelector(".product-image");
   const prevButton = fragment.querySelector(".product-prev");
   const nextButton = fragment.querySelector(".product-next");
@@ -1886,14 +2443,22 @@ function buildProductCard(product) {
   const addButton = fragment.querySelector(".btn-add");
   card.dataset.productId = product.id;
 
-  const productImages = Array.isArray(product.images) ? product.images : [];
+  const imageCount = getProductImageCount(product);
   const selectedImageIndex = state.imageIndexByProduct[product.id] || 0;
-  const validIndex = Math.min(selectedImageIndex, Math.max(productImages.length - 1, 0));
+  const validIndex = Math.min(selectedImageIndex, Math.max(imageCount - 1, 0));
   const resolvedImage = getRenderableProductImage(product, validIndex);
 
   image.src = resolvedImage || buildMissingImagePlaceholder(product.name);
+  imageWrap?.classList.add("is-loading");
+
+  const markImageReady = () => {
+    imageWrap?.classList.remove("is-loading");
+  };
+
+  image.addEventListener("load", markImageReady);
   image.addEventListener("error", () => {
     image.src = buildMissingImagePlaceholder(product.name);
+    markImageReady();
   });
 
   if (!resolvedImage) {
@@ -1937,14 +2502,16 @@ function buildProductCard(product) {
 
   prevButton.dataset.productId = product.id;
   nextButton.dataset.productId = product.id;
+  card.dataset.hasImages = imageCount > 1 ? "1" : "0";
 
-  const hasMultipleImages = productImages.length > 1;
+  const hasMultipleImages = imageCount > 1;
   prevButton.classList.toggle("hidden", !hasMultipleImages);
   nextButton.classList.toggle("hidden", !hasMultipleImages);
+  controls.classList.toggle("hidden", !hasMultipleImages);
 
   controls.innerHTML = "";
   if (hasMultipleImages) {
-    productImages.forEach((_, index) => {
+    for (let index = 0; index < imageCount; index += 1) {
       const dot = document.createElement("button");
       dot.className = "dot";
       dot.type = "button";
@@ -1953,30 +2520,47 @@ function buildProductCard(product) {
       dot.classList.toggle("active", index === validIndex);
       dot.setAttribute("aria-label", `Ver foto ${index + 1} de ${product.name}`);
       controls.appendChild(dot);
-    });
+    }
   }
 
   return card;
 }
 
 function moveProductImage(productId, delta) {
-  if (!productId) {
+  const id = String(productId || "").trim();
+  const product = state.products.find((item) => item.id === id);
+  if (!product) {
     return;
   }
 
-  const product = state.products.find((item) => item.id === productId);
-  if (!product || !Array.isArray(product.images) || product.images.length <= 1) {
+  const total = getProductImageCount(product);
+  if (total <= 1) {
     return;
   }
 
-  const currentIndex = Number(state.imageIndexByProduct[productId] || 0);
-  const nextIndex = (currentIndex + delta + product.images.length) % product.images.length;
-  state.imageIndexByProduct[productId] = nextIndex;
-  renderProducts();
+  const currentIndex = Number(state.imageIndexByProduct[id] || 0);
+  const nextIndex = (currentIndex + delta + total) % total;
+  void selectProductImage(id, nextIndex);
+}
+
+function getProductImages(product) {
+  const productId = String(product?.id || "").trim();
+  const gallery = state.productGalleryById[productId];
+  if (Array.isArray(gallery) && gallery.length) {
+    return gallery;
+  }
+
+  return Array.isArray(product?.images) ? product.images : [];
+}
+
+function getProductImageCount(product) {
+  const images = getProductImages(product);
+  const declaredCount = Number(product?.imageCount);
+  return Math.max(images.length, Number.isFinite(declaredCount) ? declaredCount : 0);
 }
 
 function getRenderableProductImage(product, index) {
-  const productImages = Array.isArray(product?.images) ? product.images : [];
+  const productImages = getProductImages(product);
   const imageFromProduct = productImages[index] || productImages[0] || "";
   if (typeof imageFromProduct === "string" && imageFromProduct.trim()) {
     return imageFromProduct;
@@ -2015,20 +2599,72 @@ async function ensureProductImageLoaded(productId) {
         persistProducts();
       }
     }
+    updateProductCardImages(id);
     renderProducts();
   } finally {
     delete state.productImageFetchInFlight[id];
   }
 }
 
-async function fetchProductImageFromCloud(productId) {
-  if (isLocalFileMode()) {
-    return "";
+function updateProductCardImages(productId) {
+  const id = String(productId || "").trim();
+  if (!id) {
+    return;
   }
 
+  const product = state.products.find((item) => item.id === id);
+  if (!product) {
+    return;
+  }
+
+  const cards = document.querySelectorAll(`.product-card[data-product-id="${escapeCssSelector(id)}"]`);
+  if (!cards.length) {
+    return;
+  }
+
+  const total = getProductImageCount(product);
+  const index = Number(state.imageIndexByProduct[id] || 0);
+  const validIndex = Math.min(index, Math.max(total - 1, 0));
+  const resolvedImage = getRenderableProductImage(product, validIndex);
+
+  cards.forEach((card) => {
+    const image = card.querySelector(".product-image");
+    const imageWrap = card.querySelector(".image-wrap");
+    const dots = card.querySelectorAll(".image-controls .dot");
+
+    if (image) {
+      image.classList.add("is-fading");
+      image.src = resolvedImage || buildMissingImagePlaceholder(product.name);
+      image.dataset.imageIndex = String(validIndex);
+      image.alt = product.name;
+      window.setTimeout(() => image.classList.remove("is-fading"), 180);
+    }
+
+    dots.forEach((dot, dotIndex) => {
+      dot.classList.toggle("active", dotIndex === validIndex);
+    });
+
+    if (imageWrap && !resolvedImage) {
+      imageWrap.classList.add("is-loading");
+      image?.addEventListener(
+        "load",
+        () => imageWrap.classList.remove("is-loading"),
+        { once: true }
+      );
+    } else {
+      imageWrap?.classList.remove("is-loading");
+    }
+  });
+}
+
+async function fetchProductImageFromCloud(productId) {
   try {
+    const requestUrl = new URL(getCloudEndpointForRequest());
+    requestUrl.searchParams.set("key", "productImage");
+    requestUrl.searchParams.set("id", productId);
+
     const response = await fetchWithTimeout(
-      `${CLOUD_ENDPOINT}?key=productImage&id=${encodeURIComponent(productId)}`,
+      requestUrl.toString(),
       {},
       CLOUD_TIMEOUT_MS
     );
@@ -2048,12 +2684,108 @@ async function fetchProductImageFromCloud(productId) {
   }
 }
 
+async function fetchProductImagesFromCloud(productId) {
+  try {
+    const requestUrl = new URL(getCloudEndpointForRequest());
+    requestUrl.searchParams.set("key", "productImages");
+    requestUrl.searchParams.set("id", productId);
+
+    const response = await fetchWithTimeout(
+      requestUrl.toString(),
+      {},
+      CLOUD_TIMEOUT_MS
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = await response.json();
+    if (!payload?.ok || !Array.isArray(payload.data)) {
+      return [];
+    }
+
+    return payload.data.filter((image) => typeof image === "string" && image.trim());
+  } catch {
+    return [];
+  }
+}
+
+async function ensureProductImagesLoaded(productId) {
+  const id = String(productId || "").trim();
+  if (!id) {
+    return [];
+  }
+
+  if (Array.isArray(state.productGalleryById[id])) {
+    return state.productGalleryById[id];
+  }
+
+  if (state.productGalleryFetchInFlight[id]) {
+    return state.productGalleryFetchInFlight[id];
+  }
+
+  const product = state.products.find((item) => item.id === id);
+  const loadedCount = getProductImages(product).length;
+  const declaredCount = Number(product?.imageCount) || 0;
+  if (declaredCount <= loadedCount) {
+    state.productGalleryById[id] = getProductImages(product);
+    return state.productGalleryById[id];
+  }
+
+  state.productGalleryFetchInFlight[id] = fetchProductImagesFromCloud(id)
+    .then((images) => {
+      const resolved = images.length ? images : getProductImages(product);
+      state.productGalleryById[id] = resolved;
+      return resolved;
+    })
+    .finally(() => {
+      delete state.productGalleryFetchInFlight[id];
+    });
+
+  return state.productGalleryFetchInFlight[id];
+}
+
+function setProductGalleryLoading(productId, isLoading) {
+  const id = String(productId || "").trim();
+  if (!id) {
+    return;
+  }
+
+  document.querySelectorAll(`.product-card[data-product-id="${escapeCssSelector(id)}"]`).forEach((card) => {
+    card.classList.toggle("is-gallery-loading", isLoading);
+  });
+}
+
+async function selectProductImage(productId, index) {
+  const id = String(productId || "").trim();
+  const product = state.products.find((item) => item.id === id);
+  if (!product) {
+    return;
+  }
+
+  const total = getProductImageCount(product);
+  if (!total) {
+    return;
+  }
+
+  const safeIndex = Math.max(0, Math.min(Number(index) || 0, total - 1));
+  state.imageIndexByProduct[id] = safeIndex;
+  if (getProductImages(product).length < total) {
+    setProductGalleryLoading(id, true);
+    await ensureProductImagesLoaded(id);
+    setProductGalleryLoading(id, false);
+  }
+
+  updateProductCardImages(id);
+}
+
 function buildMissingImagePlaceholder(name) {
   const text = encodeURIComponent(String(name || "Producto"));
   return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'><rect width='800' height='800' fill='%23ececec'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='34' font-family='Arial, sans-serif'>${text}</text></svg>`;
 }
 
-function handleProductGridClick(event) {
+async function handleProductGridClick(event) {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
     return;
@@ -2064,9 +2796,11 @@ function handleProductGridClick(event) {
     const productId = String(clickedImage.dataset.productId || "").trim();
     const product = state.products.find((item) => item.id === productId);
     if (product) {
-      const images = Array.isArray(product.images) ? product.images : [];
       const index = Number(clickedImage.dataset.imageIndex || 0);
-      openImageLightbox(images, index, product.name);
+      if (getProductImages(product).length < getProductImageCount(product)) {
+        await ensureProductImagesLoaded(productId);
+      }
+      openImageLightbox(getProductImages(product), index, product.name);
       return;
     }
   }
@@ -2101,8 +2835,7 @@ function handleProductGridClick(event) {
   if (target.matches(".dot")) {
     const productId = target.dataset.productId;
     const index = Number(target.dataset.imageIndex);
-    state.imageIndexByProduct[productId] = index;
-    renderProducts();
+    void selectProductImage(productId, index);
     return;
   }
 
@@ -2417,13 +3150,19 @@ function removeFromCart(productId) {
   }
 }
 
-function openProductDetailModal(productId) {
+async function openProductDetailModal(productId) {
   const product = state.products.find((item) => item.id === productId);
   if (!product) {
     return;
   }
 
-  const images = Array.isArray(product.images) ? product.images.filter((image) => typeof image === "string" && image.trim()) : [];
+  if (getProductImages(product).length < getProductImageCount(product)) {
+    setProductGalleryLoading(productId, true);
+    await ensureProductImagesLoaded(productId);
+    setProductGalleryLoading(productId, false);
+  }
+
+  const images = getProductImages(product).filter((image) => typeof image === "string" && image.trim());
   const safeImages = images.length ? images : [buildMissingImagePlaceholder(product.name)];
   const discountData = getProductDiscountData(product);
 
@@ -2919,6 +3658,15 @@ function formatCategory(category) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function normalizeSection(section) {
   const clean = String(section || "").trim().toLowerCase();
 
@@ -3086,12 +3834,17 @@ function normalizeProduct(product) {
       ? "Jarras"
       : normalizeSubsection(normalizedSection, product.category);
 
+  const remappedProduct = CatalogUtils.remapHogarProductsToLamparas([
+    { ...product, category: normalizedCategory, name: product.name || "" },
+  ])[0] || { category: normalizedCategory };
+  const categoryAfterLamparaRemap = remappedProduct.category || normalizedCategory;
+
   const normalizedOriginalPrice = Number(product.originalPrice ?? product.oldPrice ?? product.comparePrice ?? product.regularPrice ?? 0);
 
   return {
     ...product,
     section: normalizedSection,
-    category: normalizedCategory,
+    category: categoryAfterLamparaRemap,
     price: Number(product.price) || 0,
     originalPrice:
       normalizedSection === "Impresoras 3D"
@@ -3100,7 +3853,7 @@ function normalizeProduct(product) {
           ? Math.round(normalizedOriginalPrice)
           : null,
     jarraSize:
-      normalizedSection === "Productos" && normalizedCategory === "Jarras"
+      normalizedSection === "Productos" && categoryAfterLamparaRemap === "Jarras"
         ? normalizeJarraSize(product.jarraSize || rawCategory)
         : "",
     brand: String(product.brand || "").trim(),
@@ -3129,7 +3882,16 @@ function buildDefaultHeroSlides(products) {
     .filter((image) => typeof image === "string" && image.trim())
     .slice(0, 6);
 
-  return normalizeHeroSlides(fromProducts);
+  const defaultSlides = normalizeHeroSlides(fromProducts);
+  if (defaultSlides.length) {
+    return defaultSlides;
+  }
+
+  return [
+    "assets/HERO-VIDEO.mp4",
+    "assets/hero-2.mp4",
+    "assets/HERO-1.mp4",
+  ];
 }
 
 function createId() {
@@ -3297,6 +4059,22 @@ function renderLocalImagePreview(fileList, container) {
   }
 
   files.slice(0, 8).forEach((file) => {
+    const isVideoFile = typeof file?.type === "string" && file.type.startsWith("video/")
+      || /\.(mp4|webm|mov|m4v|avi)$/i.test(file?.name || "");
+
+    if (isVideoFile) {
+      const video = document.createElement("video");
+      video.className = "image-preview-thumb";
+      video.muted = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.loop = true;
+      video.src = URL.createObjectURL(file);
+      video.setAttribute("aria-label", file.name || "Vista previa de video");
+      container.appendChild(video);
+      return;
+    }
+
     const img = document.createElement("img");
     img.className = "image-preview-thumb";
     img.alt = file.name || "Vista previa";
@@ -3330,6 +4108,18 @@ function mergeUniqueFiles(current, incoming) {
   });
 
   return list;
+}
+
+async function processHeroMediaFile(file, config) {
+  const normalizedName = String(file?.name || "");
+  const isVideoFile = (typeof file?.type === "string" && file.type.startsWith("video/"))
+    || /\.(mp4|webm|mov|m4v|avi)$/i.test(normalizedName);
+
+  if (isVideoFile) {
+    return readFileAsDataURL(file);
+  }
+
+  return processImageFile(file, config);
 }
 
 async function processImageFile(file, config) {
@@ -3382,11 +4172,7 @@ function readFileAsDataURL(file) {
   });
 }
 
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+function escapeCssSelector(value) {
+  return String(value).replace(/["\\]/g, "\\$&");
 }
+
