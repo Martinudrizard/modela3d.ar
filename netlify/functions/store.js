@@ -1,4 +1,4 @@
-const { getStore } = require("@netlify/blobs");
+const { connectLambda, getStore } = require("@netlify/blobs");
 
 const ALLOWED_KEYS = new Set(["products", "heroSlides", "waNumber"]);
 const PRODUCT_MUTATION_KEY = "__products_mutation";
@@ -23,6 +23,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    ensureBlobsContext(event);
     const store = resolveStore(context);
     if (!store) {
       return response(500, {
@@ -389,6 +390,21 @@ function safeJsonParse(text) {
   }
 }
 
+function ensureBlobsContext(event) {
+  // Classic functions on this site run in Lambda compatibility mode: the blobs
+  // context arrives inside the event instead of the environment, so it has to
+  // be hydrated before getStore() is called.
+  if (process.env.NETLIFY_BLOBS_CONTEXT || !event?.blobs) {
+    return;
+  }
+
+  try {
+    connectLambda(event);
+  } catch {
+    // Invalid payload: resolveStore() falls back to the manual token.
+  }
+}
+
 function resolveStore() {
   // The Netlify runtime injects NETLIFY_BLOBS_CONTEXT, so the store opens with
   // just its name. Never override that context with a manual token: a stale
@@ -453,6 +469,7 @@ exports.readCatalogProducts = readCatalogProducts;
 exports.readProductImages = readProductImages;
 exports.compactProductsForResponse = compactProductsForResponse;
 exports.resolveStore = resolveStore;
+exports.ensureBlobsContext = ensureBlobsContext;
 exports.readOrderWithEtag = readOrderWithEtag;
 exports.updateOrderIfMatch = updateOrderIfMatch;
 exports.createPaymentConflictIfNew = createPaymentConflictIfNew;
