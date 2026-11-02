@@ -23,16 +23,18 @@ Esta es una primera version de la web para vender productos de impresion 3D.
 
 ## Probar local
 
-Abri `index.html` directamente o usa un servidor simple:
+Genera la carpeta publica y servila:
 
-- con Node: `npx serve .`
+- `npm run build`
+- con Node: `npx serve dist`
+- o usa `netlify dev` para probar tambien las Functions.
 
 ## Deploy en Netlify
 
 1. Crea un repo con estos archivos.
 2. En Netlify: Add new site > Import from Git.
-3. Build command: vacio.
-4. Publish directory: `.`
+3. Build command: `npm run build`.
+4. Publish directory: `dist`.
 5. Deploy.
 6. En Site settings > Functions verifica que use `netlify/functions`.
 7. Abre la URL de Netlify desde tu celular para cargar fotos de galeria.

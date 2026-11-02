@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "description": "Tienda Modela3D con admin y Netlify Functions",
   "scripts": {
+    "build": "node scripts/build-public.js",
     "test": "node --test tests/*.test.js",
+    "spec:gate": "node scripts/spec-gate.js",
     "test:mail": "node --env-file=.env scripts/test-mail.js",
     "simulate:sale": "node --env-file=.env scripts/simulate-sale.js"
   },
