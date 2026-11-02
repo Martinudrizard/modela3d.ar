@@ -22,7 +22,6 @@ test("the public build ships the storefront without internal files", () => {
 
   assert.ok(fs.existsSync(path.join(dist, "index.html")));
   assert.ok(fs.existsSync(path.join(dist, "app.js")));
-  assert.ok(fs.existsSync(path.join(dist, "catalog-utils.js")));
   assert.ok(fs.existsSync(path.join(dist, "styles.css")));
 
   for (const internal of ["netlify", "tests", "scripts", "02-DOCS", ".env", "package.json"]) {
