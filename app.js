@@ -36,7 +36,7 @@ const IMAGE_UPLOAD_CONFIG = {
 };
 
 const SHOP_SECTIONS = ["Productos", "Insumos", "Impresoras 3D"];
-const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes", "Personaliza tu llavero"];
+const PRODUCT_SUBSECTIONS = ["Llaveros", "Jarras", "Hogar", "Soportes", "Navidad"];
 const INSUMO_SUBSECTIONS = ["Filamento", "Resina", "Repuesto", "Accesorio"];
 const IMPRESORAS_SUBSECTIONS = ["Impresora 3D"];
 const JARRA_SIZES = ["500ml", "1 litro"];
@@ -131,6 +131,39 @@ const DEMO_PRODUCTS = [
     price: 489000,
     images: [
       "https://images.unsplash.com/photo-1581091215367-59ab6dcefef0?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
+    name: "Adorno Navideño Estrella",
+    section: "Productos",
+    category: "Navidad",
+    description: "Adorno impreso en 3D en forma de estrella para el árbol de Navidad.",
+    price: 4500,
+    images: [
+      "https://images.unsplash.com/photo-1513344788575-e586650e012c?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
+    name: "Adorno Navideño Copo de Nieve",
+    section: "Productos",
+    category: "Navidad",
+    description: "Copo de nieve impreso en 3D para decorar tu árbol navideño.",
+    price: 4500,
+    images: [
+      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
+    name: "Portavelas Navideño",
+    section: "Productos",
+    category: "Navidad",
+    description: "Portavelas con motivos navideños para crear ambiente festivo.",
+    price: 7200,
+    images: [
+      "https://images.unsplash.com/photo-1602854842828-8592177b2214?auto=format&fit=crop&w=900&q=80",
     ],
   },
 ];
@@ -235,10 +268,6 @@ const el = {
   productDetailDescription: document.getElementById("product-detail-description"),
   productDetailPriceWrap: document.getElementById("product-detail-price-wrap"),
   productDetailAdd: document.getElementById("product-detail-add"),
-  keychainLogoUpload: document.getElementById("keychain-logo-upload"),
-  keychainName: document.getElementById("keychain-name"),
-  keychainPreviewArt: document.getElementById("keychain-preview-art"),
-  keychainPreviewName: document.getElementById("keychain-preview-name"),
   toastStack: document.getElementById("toast-stack"),
   cartPanel: document.querySelector(".cart-panel"),
   cartToggle: document.getElementById("cart-toggle"),
@@ -322,59 +351,10 @@ async function init() {
   setCartOpen(false);
 
   bindEvents();
-  bindCatalogKeychainCustomizer();
   setCatalogMenuOpen(false, true);
   renderAll();
 
   await hydrateFromCloud();
-}
-
-function bindCatalogKeychainCustomizer() {
-  if (!el.keychainLogoUpload || !el.keychainName || !el.keychainPreviewArt || !el.keychainPreviewName) {
-    return;
-  }
-
-  const updatePreview = (logoDataUrl = "", text = "") => {
-    const safeText = String(text || "").trim() || "Modela3D";
-    el.keychainPreviewName.textContent = safeText;
-    el.keychainPreviewArt.innerHTML = "";
-
-    if (logoDataUrl) {
-      const img = document.createElement("img");
-      img.src = logoDataUrl;
-      img.alt = "Logo de llavero";
-      img.className = "keychain-preview-image";
-      el.keychainPreviewArt.appendChild(img);
-      el.keychainPreviewArt.classList.add("has-logo");
-      return;
-    }
-
-    el.keychainPreviewArt.classList.remove("has-logo");
-    el.keychainPreviewArt.textContent = "LOGO";
-    el.keychainPreviewArt.style.fontSize = "0.9rem";
-  };
-
-  el.keychainName.addEventListener("input", (event) => {
-    updatePreview(el.keychainPreviewArt.dataset.logo || "", event.target.value);
-  });
-
-  el.keychainLogoUpload.addEventListener("change", (event) => {
-    const [file] = Array.from(event.target.files || []);
-    if (!file) {
-      updatePreview("", el.keychainName.value);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result || "");
-      el.keychainPreviewArt.dataset.logo = result;
-      updatePreview(result, el.keychainName.value);
-    };
-    reader.readAsDataURL(file);
-  });
-
-  updatePreview("", el.keychainName.value);
 }
 
 function bindEvents() {
@@ -1797,16 +1777,6 @@ function renderProducts() {
 }
 
 function renderProductCatalog() {
-  const customizer = document.getElementById("customizer-shell");
-  if (customizer) {
-    customizer.classList.toggle("hidden-block", state.activeCategory !== "Personaliza tu llavero");
-  }
-
-  if (state.activeCategory === "Personaliza tu llavero") {
-    el.productsSections.innerHTML = "";
-    return;
-  }
-
   let sourceProducts = state.products.filter(
     (product) => product.section === state.activeSection && product.category === state.activeCategory
   );
@@ -1823,7 +1793,7 @@ function renderProductCatalog() {
   }
 
   const block = document.createElement("section");
-  block.className = "category-block";
+  block.className = "category-block" + (state.activeCategory === "Navidad" ? " navidad-section" : "");
 
   const title = document.createElement("h3");
   title.textContent = state.activeCategory;
