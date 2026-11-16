@@ -1,0 +1,58 @@
+# SDD runtime calibration — modela3d.ar
+# Written by sdd-init. This is the source of truth for commands, budgets and gates.
+# Do not choose a test command from memory while this file exists.
+
+project: modela3d.ar
+kind: software
+domain: ecommerce-3d-printing
+calibrated_at: 2026-10-22
+
+persistence:
+  mode: hybrid            # artifacts on disk + Engram memory
+  artifacts_root: 02-DOCS/wiki/sdd
+
+stack:
+  runtime: node 24.20.0
+  package_manager: npm
+  frontend: static HTML + CSS + vanilla JavaScript (no framework, no bundler)
+  backend: netlify functions (node, commonjs)
+  datastore: @netlify/blobs
+  payments: mercadopago checkout pro
+  auth: google identity services + email/password (scrypt) + HMAC session tokens
+  hosting: netlify (static publish ".")
+  ci: none
+
+testing:
+  strict_tdd: true
+  runner: node:test
+  commands:
+    apply: npm test
+    verify: npm test
+  layers:
+    unit: available (node:test)
+    integration: available (netlify function handlers with injected store and provider clients)
+    e2e: unavailable
+  coverage:
+    available: false
+    command: null
+  quality:
+    linter: unavailable
+    type_checker: unavailable
+    formatter: unavailable
+  known_gap: >-
+    The two frontend test files assert on source text via regex instead of executing code.
+    They are not behavioural coverage. Frontend behaviour must gain executable tests
+    before the storefront is refactored.
+
+review_budget:
+  line_budget: 400
+
+sdd:
+  autopilot: false
+  review_budget:
+    line_budget: 400
+  registry_path: .atl/skill-registry.md
+  registry_fallback: .rsc/skill-registry.json   # not generated yet; refresh via rsc registry refresh
+
+models:
+  enabled: false

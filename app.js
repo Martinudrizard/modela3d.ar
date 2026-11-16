@@ -166,6 +166,51 @@ const DEMO_PRODUCTS = [
       "https://images.unsplash.com/photo-1602854842828-8592177b2214?auto=format&fit=crop&w=900&q=80",
     ],
   },
+  {
+    id: createId(),
+    name: "Árbol de Navidad Mini",
+    section: "Productos",
+    category: "Navidad",
+    description: "Árbol navideño impreso en 3D ideal para escritorios y estanterías.",
+    price: 9800,
+    originalPrice: 12500,
+    images: [
+      "https://images.unsplash.com/photo-1544146155-f5e9f0a97b0c?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
+    name: "Calcetín Navideño",
+    section: "Productos",
+    category: "Navidad",
+    description: "Calcetín de Navidad para colgar en la chimenea o la repisa.",
+    price: 6500,
+    images: [
+      "https://images.unsplash.com/photo-1518388366603-22b93c8a8c34?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
+    name: "Reno Navideño",
+    section: "Productos",
+    category: "Navidad",
+    description: "Figurita de reno con nariz brillante para decorar tu mesa navideña.",
+    price: 5800,
+    images: [
+      "https://images.unsplash.com/photo-1558709148-75c54b9b2d03?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
+  {
+    id: createId(),
+    name: "Campana Navideña",
+    section: "Productos",
+    category: "Navidad",
+    description: "Campana de Navidad con lazo para adornar el árbol o regalar.",
+    price: 4200,
+    images: [
+      "https://images.unsplash.com/photo-1513364473762-d8560f268111?auto=format&fit=crop&w=900&q=80",
+    ],
+  },
 ];
 
 const state = {
@@ -1792,11 +1837,66 @@ function renderProductCatalog() {
     return;
   }
 
+  const isNavidad = state.activeCategory === "Navidad";
   const block = document.createElement("section");
-  block.className = "category-block" + (state.activeCategory === "Navidad" ? " navidad-section" : "");
+  block.className = "category-block" + (isNavidad ? " navidad-section" : "");
 
-  const title = document.createElement("h3");
-  title.textContent = state.activeCategory;
+  if (isNavidad) {
+    const ornaments = ["🎄", "❄️", "🔔", "🎁"];
+    const positions = ["navidad-ornament--top", "navidad-ornament--right", "navidad-ornament--bottom", "navidad-ornament--left"];
+    ornaments.forEach((icon, i) => {
+      const ornament = document.createElement("span");
+      ornament.className = "navidad-ornament " + positions[i];
+      ornament.textContent = icon;
+      block.appendChild(ornament);
+    });
+
+    const header = document.createElement("div");
+    header.className = "navidad-header";
+
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "navidad-eyebrow";
+    eyebrow.textContent = "REGALOS IMPRESOS EN 3D";
+
+    const title = document.createElement("h3");
+    title.innerHTML = "Navidad <span class='navidad-title-emphasis'>Navidad</span>";
+
+    const countdown = document.createElement("p");
+    countdown.className = "navidad-countdown";
+    countdown.textContent = diasParaNavidad() + " días para Navidad";
+
+    header.appendChild(eyebrow);
+    header.appendChild(title);
+    header.appendChild(countdown);
+    block.appendChild(header);
+
+    const promo = document.createElement("div");
+    promo.className = "navidad-promo";
+
+    const promoCopy = document.createElement("div");
+    promoCopy.className = "navidad-promo-copy";
+
+    const promoTitle = document.createElement("h4");
+    promoTitle.textContent = "Envío garantizado antes de Nochebuena";
+
+    const promoText = document.createElement("p");
+    promoText.textContent = "Pedí tus adornos y regalos navideños con entrega a tiempo para celebrar en familia.";
+
+    promoCopy.appendChild(promoTitle);
+    promoCopy.appendChild(promoText);
+
+    const promoChip = document.createElement("span");
+    promoChip.className = "navidad-promo-chip";
+    promoChip.textContent = "Entrega express";
+
+    promo.appendChild(promoCopy);
+    promo.appendChild(promoChip);
+    block.appendChild(promo);
+  } else {
+    const title = document.createElement("h3");
+    title.textContent = state.activeCategory;
+    block.appendChild(title);
+  }
 
   const grid = document.createElement("div");
   grid.className = "products-grid";
@@ -1805,9 +1905,18 @@ function renderProductCatalog() {
     grid.appendChild(buildProductCard(product));
   });
 
-  block.appendChild(title);
   block.appendChild(grid);
   el.productsSections.appendChild(block);
+}
+
+function diasParaNavidad() {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const anio = hoy.getFullYear();
+  const navidad = new Date(anio, 11, 25);
+  navidad.setHours(0, 0, 0, 0);
+  if (hoy > navidad) navidad.setFullYear(anio + 1);
+  return Math.ceil((navidad - hoy) / (1000 * 60 * 60 * 24));
 }
 
 function renderInsumosCatalog() {

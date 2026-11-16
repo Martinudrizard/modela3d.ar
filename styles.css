@@ -2337,25 +2337,27 @@ body.checkout-open {
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-xl);
-  padding: clamp(20px, 4vw, 30px);
+  padding: clamp(24px, 5vw, 44px);
+  margin-top: 16px;
   background:
-    radial-gradient(circle at 10% 20%, rgba(215, 25, 32, 0.15), transparent 25%),
-    radial-gradient(circle at 90% 80%, rgba(30, 170, 109, 0.12), transparent 25%),
-    linear-gradient(135deg, #fffdfb 0%, #f8f1ef 45%, #eef2f3 100%);
-  border: 1px solid rgba(215, 25, 32, 0.14);
+    radial-gradient(circle at 10% 15%, rgba(196, 30, 58, 0.16), transparent 30%),
+    radial-gradient(circle at 90% 85%, rgba(20, 83, 45, 0.13), transparent 30%),
+    linear-gradient(135deg, #fbfaf5 0%, #f4efe4 55%, #eae3d6 100%);
+  border: 1px solid rgba(196, 30, 58, 0.16);
   box-shadow: var(--shadow-strong);
+  z-index: 1;
 }
 
 .navidad-section::before {
   content: "";
   position: absolute;
-  inset: -10% -10% -10% -10%;
+  inset: -8% -8% -8% -8%;
   background-image:
-    radial-gradient(circle at 15% 15%, #d71920 2px, transparent 2px),
-    radial-gradient(circle at 85% 85%, #1aa86d 2px, transparent 2px),
+    radial-gradient(circle at 15% 20%, #c41e3a 2px, transparent 2px),
+    radial-gradient(circle at 85% 75%, #14532d 2px, transparent 2px),
     radial-gradient(circle at 50% 10%, #d4a017 2px, transparent 2px);
-  background-size: 40px 40px, 40px 40px, 40px 40px;
-  opacity: 0.12;
+  background-size: 44px 44px, 44px 44px, 44px 44px;
+  opacity: 0.10;
   pointer-events: none;
   z-index: 0;
 }
@@ -2363,20 +2365,164 @@ body.checkout-open {
 .navidad-section::after {
   content: "";
   position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 120px;
-  height: 4px;
-  background: linear-gradient(90deg, #d71920, #1aa86d, #d4a017);
-  border-radius: 2px;
+  top: 14px;
+  left: 14px;
+  width: 150px;
+  height: 5px;
+  background: linear-gradient(90deg, #c41e3a, #14532d, #d4a017);
+  border-radius: 3px;
   z-index: 1;
+}
+
+.navidad-ornament {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.12));
+}
+
+.navidad-ornament--top {
+  top: -14px;
+  left: 12px;
+  font-size: clamp(28px, 6vw, 46px);
+}
+
+.navidad-ornament--right {
+  top: 14%;
+  right: -10px;
+  font-size: clamp(26px, 5vw, 40px);
+  transform: rotate(12deg);
+}
+
+.navidad-ornament--bottom {
+  bottom: -14px;
+  right: 12px;
+  font-size: clamp(28px, 6vw, 46px);
+}
+
+.navidad-ornament--left {
+  bottom: 22%;
+  left: -10px;
+  font-size: clamp(26px, 5vw, 40px);
+  transform: rotate(-10deg);
+}
+
+.navidad-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.navidad-eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #c41e3a;
+  font-weight: 800;
 }
 
 .navidad-section > h3 {
   position: relative;
   z-index: 2;
-  color: #d71920;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  margin: 0;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: 1px;
+  line-height: 1.05;
+  color: #111;
+  text-transform: uppercase;
+}
+
+.navidad-title-emphasis {
+  display: inline;
+  background: linear-gradient(135deg, #c41e3a 0%, #14532d 45%, #d4a017 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.navidad-promo {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #c41e3a 0%, #8f0d16 100%);
+  color: #fff;
+  box-shadow: 0 20px 40px rgba(196, 30, 58, 0.35);
+  overflow: hidden;
+}
+
+.navidad-promo::before {
+  content: "🎁";
+  position: absolute;
+  top: -26px;
+  right: -8px;
+  font-size: 64px;
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+.navidad-promo::after {
+  content: "⛄";
+  position: absolute;
+  bottom: -18px;
+  left: -8px;
+  font-size: 48px;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.navidad-promo-copy h4 {
+  margin: 0 0 5px;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: clamp(1.25rem, 3vw, 1.7rem);
+  letter-spacing: 0.8px;
+}
+
+.navidad-promo-copy p {
+  margin: 0;
+  font-size: 0.86rem;
+  opacity: 0.96;
+  line-height: 1.45;
+}
+
+.navidad-promo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+  justify-self: end;
+}
+
+.navidad-countdown {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 6px;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+  letter-spacing: 2.5px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  text-align: right;
 }
 
 .navidad-section .products-grid {
@@ -2385,22 +2531,78 @@ body.checkout-open {
 }
 
 .navidad-section .product-card {
-  border-color: rgba(215, 25, 32, 0.18);
+  border-color: rgba(196, 30, 58, 0.14);
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(6px);
+  border-radius: 20px;
 }
 
 .navidad-section .product-card:hover {
-  border-color: #d71920;
+  border-color: #c41e3a;
   box-shadow: var(--shadow);
+  transform: translateY(-6px) scale(1.02);
+}
+
+.navidad-section .product-card .image-wrap {
+  background: linear-gradient(180deg, #f5f1e9 0%, #efe4d2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.navidad-section .product-card .image-wrap::after {
+  content: "🎄";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 1.3rem;
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .navidad-section .product-tag-category {
-  background: rgba(215, 25, 32, 0.14);
-  color: #b80f16;
+  background: rgba(196, 30, 58, 0.12);
+  color: #a61118;
+}
+
+.navidad-section .product-price {
+  color: #14532d;
+}
+
+.navidad-section .product-price.is-discounted::before {
+  color: #c41e3a;
+}
+
+.navidad-section .product-desc {
+  color: #4a453e;
+}
+
+.navidad-section .btn-add {
+  background: linear-gradient(145deg, #c41e3a, #e02a3c);
+  color: #fff;
+}
+
+.navidad-section .btn-add:hover {
+  filter: brightness(1.05);
 }
 
 @media (max-width: 760px) {
   .navidad-section {
     padding: 16px;
     border-radius: 14px;
+    margin-top: 10px;
+  }
+
+  .navidad-promo {
+    grid-template-columns: 1fr;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .navidad-promo-chip {
+    justify-self: start;
+  }
+
+  .navidad-countdown {
+    text-align: left;
   }
 }
